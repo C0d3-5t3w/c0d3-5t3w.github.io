@@ -1,0 +1,19 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "outDir": "./c0d3-5t3w.github.io-main/assets/js",
+    "rootDir": "./c0d3-5t3w.github.io-main/assets/ts",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "sourceMap": true
+  },
+  "include": [
+    "./c0d3-5t3w.github.io-main/assets/ts/**/*"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}
