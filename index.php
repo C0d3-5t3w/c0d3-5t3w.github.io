@@ -256,11 +256,6 @@ $random_quote = $quotes[array_rand($quotes)];
                 <h1>Random quote:</h1>
                 <div id="quote-text">
                     <h3><p id="quote-content"><?php echo $random_quote; ?></p></h3>
-                    <!--
-                    <form method="post" style="text-align: right; margin-top: 5px;">
-                        <button type="submit" name="new_quote" style="background: transparent; border: 1px solid var(--primary-color); color: var(--primary-color); cursor: pointer; padding: 5px 10px; border-radius: 5px;">New Quote</button>
-                    </form>
-                    -->
                 </div>
             </div>
         </div>
