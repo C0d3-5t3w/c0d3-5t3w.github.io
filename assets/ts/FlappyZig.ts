@@ -370,7 +370,7 @@ class Game {
         CONSTANTS.IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
             || (window.innerWidth <= 768);
         
-        const targetAspectRatio = 9 / 16; 
+        const targetAspectRatio = 16 / 9; 
         let width, height;
         
         const screenWidth = window.innerWidth;
