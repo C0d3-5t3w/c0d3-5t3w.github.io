@@ -61,6 +61,24 @@ interface GameConstants {
     WIND_GUST_FORCE: number;
     WIND_GUST_DURATION: number;
     WIND_PARTICLE_COUNT: number;
+
+    // Health system
+    BASE_MAX_HEALTH: number;
+    BASE_HEALTH_BAR_WIDTH: number;
+    BASE_HEALTH_BAR_HEIGHT: number;
+    DAMAGE_IMMUNITY_FRAMES: number;
+    
+    // Powerup system
+    BASE_POWERUP_SIZE: number;
+    POWERUP_DURATION: number;
+    POWERUP_SPAWN_CHANCE: number;
+    BASE_SHRINK_FACTOR: number;
+    BULLET_EFFICIENCY_BOOST: number;
+    
+    // Enhanced wind
+    BASE_WIND_TORNADO_CHANCE: number;
+    BASE_WIND_TORNADO_SIZE: number;
+    BASE_WIND_TORNADO_FORCE: number;
 }
 
 const CONSTANTS: GameConstants = {
@@ -121,8 +139,31 @@ const CONSTANTS: GameConstants = {
     MOVING_PIPE_SPEED: 0.02,
     WIND_GUST_FORCE: 0.5,
     WIND_GUST_DURATION: 120,
-    WIND_PARTICLE_COUNT: 80
+    WIND_PARTICLE_COUNT: 80,
+
+    BASE_MAX_HEALTH: 3,
+    BASE_HEALTH_BAR_WIDTH: 150,
+    BASE_HEALTH_BAR_HEIGHT: 20,
+    DAMAGE_IMMUNITY_FRAMES: 45, 
+    
+    BASE_POWERUP_SIZE: 40,
+    POWERUP_DURATION: 600, 
+    POWERUP_SPAWN_CHANCE: 0.003, 
+    BASE_SHRINK_FACTOR: 0.6,
+    BULLET_EFFICIENCY_BOOST: 3,
+    
+    BASE_WIND_TORNADO_CHANCE: 0.15,
+    BASE_WIND_TORNADO_SIZE: 120,
+    BASE_WIND_TORNADO_FORCE: 0.8
 };
+
+enum PowerupType {
+    SHRINK,
+    BULLET_BOOST,
+    INVINCIBLE,
+    PIPE_BREAKER,
+    ENEMY_KILLER
+}
 
 interface Zig {
     x: number;
@@ -170,6 +211,18 @@ interface WindParticle {
     opacity: number;
 }
 
+interface Powerup {
+    x: number;
+    y: number;
+    type: PowerupType;
+    colorPhase: number;
+}
+
+interface ActivePowerup {
+    type: PowerupType;
+    timer: number;
+}
+
 class Game {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
@@ -206,6 +259,13 @@ class Game {
     private windParticles: WindParticle[];
     private nextWindTime: number;
     private pipeCount: number;
+    private health: number;
+    private maxHealth: number;
+    private immunityFrames: number;
+    private powerups: Powerup[];
+    private activePowerups: ActivePowerup[];
+    private zigOriginalWidth: number;
+    private zigOriginalHeight: number;
 
     constructor() {
         this.canvas = document.createElement('canvas');
@@ -294,6 +354,13 @@ class Game {
         this.windParticles = [];
         this.nextWindTime = this.getRandomWindInterval();
         this.pipeCount = 0;
+        this.health = CONSTANTS.BASE_MAX_HEALTH;
+        this.maxHealth = CONSTANTS.BASE_MAX_HEALTH;
+        this.immunityFrames = 0;
+        this.powerups = [];
+        this.activePowerups = [];
+        this.zigOriginalWidth = CONSTANTS.ZIG_WIDTH;
+        this.zigOriginalHeight = CONSTANTS.ZIG_HEIGHT;
     }
 
     setupCanvas(): void {
@@ -437,6 +504,13 @@ class Game {
         this.windParticles = [];
         this.nextWindTime = this.getRandomWindInterval();
         this.pipeCount = 0;
+        this.health = CONSTANTS.BASE_MAX_HEALTH;
+        this.maxHealth = CONSTANTS.BASE_MAX_HEALTH;
+        this.immunityFrames = 0;
+        this.powerups = [];
+        this.activePowerups = [];
+        CONSTANTS.ZIG_WIDTH = this.zigOriginalWidth;
+        CONSTANTS.ZIG_HEIGHT = this.zigOriginalHeight;
     }
 
     shoot(): void {
@@ -532,6 +606,46 @@ class Game {
             speed: (3 + Math.random() * 7) * CONSTANTS.SCALE_FACTOR * this.windIntensity,
             opacity: 0.1 + Math.random() * 0.5
         });
+    }
+
+    takeDamage(amount: number = 1): void {
+        if (this.immunityFrames > 0 || this.hasPowerup(PowerupType.INVINCIBLE)) return;
+        
+        this.health -= amount;
+        this.immunityFrames = CONSTANTS.DAMAGE_IMMUNITY_FRAMES;
+        
+        if (this.health <= 0) {
+            this.gameOver = true;
+            return;
+        }
+    }
+
+    spawnPowerup(): void {
+        if (Math.random() > CONSTANTS.POWERUP_SPAWN_CHANCE) return;
+        
+        const type = Math.floor(Math.random() * 5);
+        this.powerups.push({
+            x: CONSTANTS.SCREEN_WIDTH,
+            y: Math.random() * (CONSTANTS.SCREEN_HEIGHT - CONSTANTS.POWERUP_SIZE),
+            type,
+            colorPhase: Math.random() * Math.PI * 2
+        });
+    }
+
+    collectPowerup(powerup: Powerup): void {
+        this.activePowerups.push({
+            type: powerup.type,
+            timer: CONSTANTS.POWERUP_DURATION
+        });
+
+        if (powerup.type === PowerupType.SHRINK) {
+            CONSTANTS.ZIG_WIDTH = this.zigOriginalWidth * CONSTANTS.SHRINK_FACTOR;
+            CONSTANTS.ZIG_HEIGHT = this.zigOriginalHeight * CONSTANTS.SHRINK_FACTOR;
+        }
+    }
+
+    hasPowerup(type: PowerupType): boolean {
+        return this.activePowerups.some(p => p.type === type);
     }
 
     update(): void {
@@ -687,25 +801,66 @@ class Game {
 
         this.walls.forEach(wall => {
             if (this.checkWallCollision(wall)) {
-                this.gameOver = true;
+                if (this.hasPowerup(PowerupType.PIPE_BREAKER)) {
+                    this.walls = this.walls.filter(w => w !== wall);
+                } else {
+                    this.gameOver = true;
+                }
             }
         });
 
         this.enemies.forEach(enemy => {
             if (this.checkEnemyCollision(enemy)) {
-                this.gameOver = true;
+                if (this.hasPowerup(PowerupType.ENEMY_KILLER)) {
+                    this.enemies = this.enemies.filter(e => e !== enemy);
+                    this.score += CONSTANTS.ENEMY_POINT_VALUE;
+                } else if (!this.hasPowerup(PowerupType.INVINCIBLE)) {
+                    this.takeDamage();
+                }
             }
         });
 
         this.bullets.forEach(bullet => {
+            let hitCount = 0;
             this.enemies = this.enemies.filter(enemy => {
                 if (this.checkBulletEnemyCollision(bullet, enemy)) {
+                    hitCount++;
                     this.score += CONSTANTS.ENEMY_POINT_VALUE;
                     return false;
                 }
                 return true;
             });
+            
+            if (hitCount >= (this.hasPowerup(PowerupType.BULLET_BOOST) ? 
+                CONSTANTS.BULLET_EFFICIENCY_BOOST : 1)) {
+                this.bullets = this.bullets.filter(b => b !== bullet);
+            }
         });
+
+        this.powerups.forEach(powerup => {
+            powerup.x -= CONSTANTS.WALL_SPEED * this.speedMultiplier;
+            powerup.colorPhase += 0.05;
+            
+            if (this.checkPowerupCollision(powerup)) {
+                this.collectPowerup(powerup);
+                this.powerups = this.powerups.filter(p => p !== powerup);
+            }
+        });
+
+        this.powerups = this.powerups.filter(p => p.x > -CONSTANTS.POWERUP_SIZE);
+
+        for (let i = this.activePowerups.length - 1; i >= 0; i--) {
+            const powerup = this.activePowerups[i];
+            powerup.timer--;
+            
+            if (powerup.timer <= 0) {
+                if (powerup.type === PowerupType.SHRINK) {
+                    CONSTANTS.ZIG_WIDTH = this.zigOriginalWidth;
+                    CONSTANTS.ZIG_HEIGHT = this.zigOriginalHeight;
+                }
+                this.activePowerups.splice(i, 1);
+            }
+        }
 
         this.enemies = this.enemies.filter(enemy => {
             if (this.checkEnemyTrailCollision(enemy)) {
@@ -968,6 +1123,47 @@ class Game {
             }
         });
 
+        this.powerups.forEach(powerup => {
+            const r = Math.sin(powerup.colorPhase) * 127 + 128;
+            const g = Math.sin(powerup.colorPhase + Math.PI * 2/3) * 127 + 128;
+            const b = Math.sin(powerup.colorPhase + Math.PI * 4/3) * 127 + 128;
+            
+            this.ctx.save();
+            this.ctx.fillStyle = `rgb(${r},${g},${b})`;
+            this.ctx.strokeStyle = 'white';
+            this.ctx.lineWidth = 2;
+            
+            const x = powerup.x;
+            const y = powerup.y;
+            const size = CONSTANTS.POWERUP_SIZE;
+            
+            switch(powerup.type) {
+                case PowerupType.SHRINK:
+                    this.ctx.beginPath();
+                    this.ctx.arc(x + size/2, y + size/2, size/3, 0, Math.PI * 2);
+                    break;
+                case PowerupType.BULLET_BOOST:
+                    this.ctx.fillText('↗', x + size/4, y + size*3/4);
+                    break;
+                case PowerupType.INVINCIBLE:
+                    this.ctx.fillText('★', x + size/4, y + size*3/4);
+                    break;
+                case PowerupType.PIPE_BREAKER:
+                    this.ctx.fillText('⚒', x + size/4, y + size*3/4);
+                    break;
+                case PowerupType.ENEMY_KILLER:
+                    this.ctx.fillText('⚔', x + size/4, y + size*3/4);
+                    break;
+            }
+            
+            this.ctx.fill();
+            this.ctx.stroke();
+            this.ctx.restore();
+        });
+
+        this.drawHealthBar();
+        this.drawActivePowerups();
+
         this.drawUI();
 
         if (this.windActive) {
@@ -1081,6 +1277,57 @@ class Game {
         this.ctx.shadowOffsetY = 0;
     }
 
+    drawHealthBar(): void {
+        const barX = 10;
+        const barY = CONSTANTS.SCREEN_HEIGHT - CONSTANTS.BASE_HEALTH_BAR_HEIGHT - 10;
+        
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.fillRect(barX, barY, CONSTANTS.BASE_HEALTH_BAR_WIDTH, CONSTANTS.BASE_HEALTH_BAR_HEIGHT);
+        
+        const healthRatio = this.health / this.maxHealth;
+        this.ctx.fillStyle = `rgba(
+            ${255 * (1 - healthRatio)},
+            ${255 * healthRatio},
+            0,
+            0.7
+        )`;
+        
+        this.ctx.fillRect(
+            barX + 2,
+            barY + 2,
+            (CONSTANTS.BASE_HEALTH_BAR_WIDTH - 4) * healthRatio,
+            CONSTANTS.BASE_HEALTH_BAR_HEIGHT - 4
+        );
+        
+        this.ctx.strokeStyle = 'white';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(barX, barY, CONSTANTS.BASE_HEALTH_BAR_WIDTH, CONSTANTS.BASE_HEALTH_BAR_HEIGHT);
+    }
+
+    drawActivePowerups(): void {
+        const startY = CONSTANTS.SCREEN_HEIGHT - CONSTANTS.BASE_HEALTH_BAR_HEIGHT - 50;
+        const iconSize = 30;
+        
+        this.activePowerups.forEach((powerup, index) => {
+            const timeRatio = powerup.timer / CONSTANTS.POWERUP_DURATION;
+            const x = 10;
+            const y = startY - (index * (iconSize + 5));
+            
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(x, y, iconSize, iconSize);
+            
+            this.ctx.fillStyle = 'rgba(0, 255, 0, 0.7)';
+            this.ctx.fillRect(x, y + iconSize - 4, iconSize * timeRatio, 4);
+            
+            this.ctx.fillStyle = 'white';
+            this.ctx.textAlign = 'center';
+            this.ctx.font = `${iconSize * 0.8}px Arial`;
+            
+            const icons = ['↓', '↗', '★', '⚒', '⚔'];
+            this.ctx.fillText(icons[powerup.type], x + iconSize/2, y + iconSize*0.8);
+        });
+    }
+
     checkWallCollision(wall: Wall): boolean {
         return (
             this.zig.x < wall.x + 40 &&
@@ -1142,6 +1389,20 @@ class Game {
             }
         }
         return false;
+    }
+
+    checkPowerupCollision(powerup: Powerup): boolean {
+        const zigCenterX = this.zig.x + CONSTANTS.ZIG_WIDTH/2;
+        const zigCenterY = this.zig.y + CONSTANTS.ZIG_HEIGHT/2;
+        const powerupCenterX = powerup.x + CONSTANTS.POWERUP_SIZE/2;
+        const powerupCenterY = powerup.y + CONSTANTS.POWERUP_SIZE/2;
+        
+        const distance = Math.sqrt(
+            Math.pow(zigCenterX - powerupCenterX, 2) +
+            Math.pow(zigCenterY - powerupCenterY, 2)
+        );
+        
+        return distance < CONSTANTS.ZIG_WIDTH/2 + CONSTANTS.POWERUP_SIZE/2;
     }
 
     pointLineDistance(x: number, y: number, x1: number, y1: number, x2: number, y2: number): number {
