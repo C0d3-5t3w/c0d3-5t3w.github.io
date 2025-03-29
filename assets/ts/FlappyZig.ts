@@ -34,7 +34,14 @@ interface GameConstants {
     SCREEN_HEIGHT: number;
     SCALE_FACTOR: number;
     
-    // Dynamic constants that will be calculated - no longer optional
+    BASE_MOVING_PIPE_AMPLITUDE: number;
+    BASE_MOVING_PIPE_SPEED: number;
+    BASE_WIND_GUST_FORCE: number;
+    BASE_WIND_GUST_DURATION: number;
+    BASE_WIND_GUST_INTERVAL_MIN: number;
+    BASE_WIND_GUST_INTERVAL_MAX: number;
+    BASE_WIND_PARTICLE_COUNT: number;
+
     GRAVITY: number;
     JUMP_FORCE: number;
     WALL_SPEED: number;
@@ -49,6 +56,11 @@ interface GameConstants {
     BULLET_AUTO_AIM_RANGE: number;
     BULLET_SPEED_TOTAL: number;
     TRAIL_LINE_WIDTH: number;
+    MOVING_PIPE_AMPLITUDE: number;
+    MOVING_PIPE_SPEED: number;
+    WIND_GUST_FORCE: number;
+    WIND_GUST_DURATION: number;
+    WIND_PARTICLE_COUNT: number;
 }
 
 const CONSTANTS: GameConstants = {
@@ -97,7 +109,19 @@ const CONSTANTS: GameConstants = {
     ENEMY_BOB_AMPLITUDE: 100,
     BULLET_AUTO_AIM_RANGE: 900,
     BULLET_SPEED_TOTAL: 20,
-    TRAIL_LINE_WIDTH: 8
+    TRAIL_LINE_WIDTH: 8,
+    BASE_MOVING_PIPE_AMPLITUDE: 150,
+    BASE_MOVING_PIPE_SPEED: 0.02,
+    BASE_WIND_GUST_FORCE: 0.5,
+    BASE_WIND_GUST_DURATION: 120,
+    BASE_WIND_GUST_INTERVAL_MIN: 300,
+    BASE_WIND_GUST_INTERVAL_MAX: 800,
+    BASE_WIND_PARTICLE_COUNT: 80,
+    MOVING_PIPE_AMPLITUDE: 150,
+    MOVING_PIPE_SPEED: 0.02,
+    WIND_GUST_FORCE: 0.5,
+    WIND_GUST_DURATION: 120,
+    WIND_PARTICLE_COUNT: 80
 };
 
 interface Zig {
@@ -111,6 +135,9 @@ interface Wall {
     x: number;
     height: number;
     passed: boolean;
+    isMoving?: boolean;
+    baseHeight?: number;
+    movePhase?: number;
 }
 
 interface Bullet {
@@ -133,6 +160,14 @@ interface Enemy {
 interface TrailPoint {
     x: number;
     y: number;
+}
+
+interface WindParticle {
+    x: number;
+    y: number;
+    size: number;
+    speed: number;
+    opacity: number;
 }
 
 class Game {
@@ -163,6 +198,14 @@ class Game {
     private lastTime: number;
     private speedMultiplier: number;
     private currentBulletSize: number;
+    private windActive: boolean;
+    private windTimer: number;
+    private windDirection: number; 
+    private windIntensity: number;
+    private windDuration: number;
+    private windParticles: WindParticle[];
+    private nextWindTime: number;
+    private pipeCount: number;
 
     constructor() {
         this.canvas = document.createElement('canvas');
@@ -242,6 +285,15 @@ class Game {
         document.body.style.position = 'fixed';
         document.body.style.width = '100%';
         document.body.style.height = '100%';
+
+        this.windActive = false;
+        this.windTimer = 0;
+        this.windDirection = 0;
+        this.windIntensity = 0;
+        this.windDuration = 0;
+        this.windParticles = [];
+        this.nextWindTime = this.getRandomWindInterval();
+        this.pipeCount = 0;
     }
 
     setupCanvas(): void {
@@ -297,6 +349,13 @@ class Game {
         CONSTANTS.BULLET_AUTO_AIM_RANGE = CONSTANTS.BASE_BULLET_AUTO_AIM_RANGE * CONSTANTS.SCALE_FACTOR;
         CONSTANTS.BULLET_SPEED_TOTAL = CONSTANTS.BASE_BULLET_SPEED_TOTAL * CONSTANTS.SCALE_FACTOR;
         CONSTANTS.TRAIL_LINE_WIDTH = CONSTANTS.BASE_TRAIL_LINE_WIDTH * CONSTANTS.SCALE_FACTOR;
+        CONSTANTS.MOVING_PIPE_AMPLITUDE = CONSTANTS.BASE_MOVING_PIPE_AMPLITUDE * CONSTANTS.SCALE_FACTOR;
+        CONSTANTS.MOVING_PIPE_SPEED = CONSTANTS.BASE_MOVING_PIPE_SPEED;
+        CONSTANTS.WIND_GUST_FORCE = CONSTANTS.BASE_WIND_GUST_FORCE * CONSTANTS.SCALE_FACTOR;
+        CONSTANTS.WIND_GUST_DURATION = CONSTANTS.BASE_WIND_GUST_DURATION;
+        CONSTANTS.WIND_PARTICLE_COUNT = CONSTANTS.IS_MOBILE ? 
+            Math.floor(CONSTANTS.BASE_WIND_PARTICLE_COUNT * 0.6) : 
+            CONSTANTS.BASE_WIND_PARTICLE_COUNT;
         
         if (this.zig) {
             this.zig.x = CONSTANTS.SCREEN_WIDTH / 4;
@@ -371,6 +430,13 @@ class Game {
         this.nextEnemyShape = 0;
         this.speedMultiplier = 1.0;
         this.currentBulletSize = CONSTANTS.BULLET_SIZE;
+        this.windActive = false;
+        this.windTimer = 0;
+        this.windDirection = 0;
+        this.windIntensity = 0;
+        this.windParticles = [];
+        this.nextWindTime = this.getRandomWindInterval();
+        this.pipeCount = 0;
     }
 
     shoot(): void {
@@ -433,6 +499,41 @@ class Game {
         );
     }
 
+    getRandomWindInterval(): number {
+        return Math.floor(
+            Math.random() * 
+            (CONSTANTS.BASE_WIND_GUST_INTERVAL_MAX - CONSTANTS.BASE_WIND_GUST_INTERVAL_MIN) + 
+            CONSTANTS.BASE_WIND_GUST_INTERVAL_MIN
+        );
+    }
+
+    startWindGust(): void {
+        this.windActive = true;
+        this.windTimer = 0;
+        this.windDirection = Math.random() > 0.5 ? 1 : -1;
+        this.windIntensity = (0.5 + Math.random() * 0.5) * CONSTANTS.WIND_GUST_FORCE;
+        this.windDuration = CONSTANTS.WIND_GUST_DURATION * (0.8 + Math.random() * 0.4);
+        
+        this.windParticles = [];
+        for (let i = 0; i < CONSTANTS.WIND_PARTICLE_COUNT; i++) {
+            this.createWindParticle();
+        }
+    }
+    
+    createWindParticle(): void {
+        const x = this.windDirection > 0 ? 
+            -10 - Math.random() * 50 : 
+            CONSTANTS.SCREEN_WIDTH + Math.random() * 50;
+            
+        this.windParticles.push({
+            x: x,
+            y: Math.random() * CONSTANTS.SCREEN_HEIGHT,
+            size: 1 + Math.random() * 3 * CONSTANTS.SCALE_FACTOR,
+            speed: (3 + Math.random() * 7) * CONSTANTS.SCALE_FACTOR * this.windIntensity,
+            opacity: 0.1 + Math.random() * 0.5
+        });
+    }
+
     update(): void {
         if (this.gameOver) {
             this.deathTimer++;
@@ -465,20 +566,75 @@ class Game {
             this.zig.jumping = false;
         }
 
+        if (this.windActive) {
+            this.windTimer++;
+            
+            this.zig.velY += this.windDirection * this.windIntensity * 0.05;
+            
+            for (let i = 0; i < this.windParticles.length; i++) {
+                const particle = this.windParticles[i];
+                particle.x += this.windDirection * particle.speed;
+                
+                if ((this.windDirection > 0 && particle.x > CONSTANTS.SCREEN_WIDTH + 10) || 
+                    (this.windDirection < 0 && particle.x < -10)) {
+                    const x = this.windDirection > 0 ? 
+                        -10 - Math.random() * 20 : 
+                        CONSTANTS.SCREEN_WIDTH + Math.random() * 20;
+                    
+                    this.windParticles[i] = {
+                        x: x,
+                        y: Math.random() * CONSTANTS.SCREEN_HEIGHT,
+                        size: 1 + Math.random() * 3 * CONSTANTS.SCALE_FACTOR,
+                        speed: (3 + Math.random() * 7) * CONSTANTS.SCALE_FACTOR * this.windIntensity,
+                        opacity: 0.1 + Math.random() * 0.5
+                    };
+                }
+            }
+            
+            if (this.windTimer >= this.windDuration) {
+                this.windActive = false;
+                this.nextWindTime = this.getRandomWindInterval();
+            }
+        } else {
+            this.nextWindTime--;
+            if (this.nextWindTime <= 0) {
+                this.startWindGust();
+            }
+        }
+
         if (this.walls.length === 0 || this.walls[this.walls.length - 1].x < CONSTANTS.SCREEN_WIDTH - CONSTANTS.WALL_SPACING) {
             const minGapPosition = 50 * CONSTANTS.SCALE_FACTOR;
             const maxGapPosition = CONSTANTS.SCREEN_HEIGHT - CONSTANTS.WALL_GAP - 50 * CONSTANTS.SCALE_FACTOR;
             const height = Math.random() * (maxGapPosition - minGapPosition) + minGapPosition;
             
+            this.pipeCount++;
+            const isMoving = this.pipeCount % 5 === 0;
+            
             this.walls.push({
                 x: CONSTANTS.SCREEN_WIDTH,
                 height: height,
-                passed: false
+                passed: false,
+                isMoving: isMoving,
+                baseHeight: height,
+                movePhase: 0
             });
         }
 
         this.walls.forEach(wall => {
             wall.x -= CONSTANTS.WALL_SPEED * this.speedMultiplier;
+            
+            if (wall.isMoving && wall.baseHeight !== undefined && wall.movePhase !== undefined) {
+                wall.movePhase += CONSTANTS.MOVING_PIPE_SPEED;
+                wall.height = wall.baseHeight + Math.sin(wall.movePhase) * CONSTANTS.MOVING_PIPE_AMPLITUDE;
+                
+                const minGap = 30 * CONSTANTS.SCALE_FACTOR;
+                if (wall.height < minGap) {
+                    wall.height = minGap;
+                } else if (wall.height > CONSTANTS.SCREEN_HEIGHT - CONSTANTS.WALL_GAP - minGap) {
+                    wall.height = CONSTANTS.SCREEN_HEIGHT - CONSTANTS.WALL_GAP - minGap;
+                }
+            }
+            
             if (!wall.passed && wall.x + 40 < this.zig.x) {
                 wall.passed = true;
                 this.score++;
@@ -621,183 +777,233 @@ class Game {
         
         this.ctx.restore();
 
-        this.walls.forEach(wall => this.drawWall(wall));
+        this.walls.forEach(wall => {
+            if (wall.isMoving) {
+                const pulseColor = Math.sin(this.colorCycle * 2) * 127 + 128;
+                this.ctx.fillStyle = `rgb(${pulseColor}, ${pulseColor/2}, ${pulseColor/4})`;
+                this.ctx.fillRect(wall.x - 2, 0, 44, wall.height);
+                this.ctx.fillRect(wall.x - 2, wall.height + CONSTANTS.WALL_GAP, 44, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+            }
+            
+            if (this.pipeImg.complete) {
+                const pattern = this.ctx.createPattern(this.pipeImg, 'repeat');
+                if (pattern) {
+                    this.ctx.save();
 
-        this.bullets.forEach(bullet => this.drawBullet(bullet));
+                    this.ctx.beginPath();
+                    this.ctx.rect(wall.x, 0, 40, wall.height);
+                    this.ctx.clip();
+                    this.ctx.translate(wall.x, 0);
+                    this.ctx.fillStyle = pattern;
+                    this.ctx.fillRect(0, 0, 40, wall.height);
+                    this.ctx.restore();
 
-        this.enemies.forEach(enemy => this.drawEnemy(enemy));
+                    this.ctx.save();
+                    this.ctx.beginPath();
+                    this.ctx.rect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+                    this.ctx.clip();
+                    this.ctx.translate(wall.x, wall.height + CONSTANTS.WALL_GAP);
+                    this.ctx.fillStyle = pattern;
+                    this.ctx.fillRect(0, 0, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+                    this.ctx.restore();
+                    
+                    if (wall.isMoving) {
+                        const pulseOpacity = (Math.sin(this.colorCycle * 3) * 0.3) + 0.7;
+                        this.ctx.save();
+                        this.ctx.strokeStyle = `rgba(255, 165, 0, ${pulseOpacity})`;
+                        this.ctx.lineWidth = 3 * CONSTANTS.SCALE_FACTOR;
+                        this.ctx.strokeRect(wall.x, 0, 40, wall.height);
+                        this.ctx.strokeRect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+                        this.ctx.restore();
+                    }
+                }
+            } else {
+                this.ctx.fillStyle = 'white';
+                this.ctx.fillRect(wall.x, 0, 40, wall.height);
+                this.ctx.fillRect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+                
+                if (wall.isMoving) {
+                    this.ctx.strokeStyle = 'orange';
+                    this.ctx.lineWidth = 3 * CONSTANTS.SCALE_FACTOR;
+                    this.ctx.strokeRect(wall.x, 0, 40, wall.height);
+                    this.ctx.strokeRect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+                }
+            }
+        });
+
+        this.bullets.forEach(bullet => {
+            const r = 0.5 + Math.sin(bullet.colorPhase) * 0.5;
+            const g = 0.5 + Math.sin(bullet.colorPhase + Math.PI * 2/3) * 0.5;
+            const b = 0.5 + Math.sin(bullet.colorPhase + Math.PI * 4/3) * 0.5;
+            
+            if (this.meowImg.complete) {
+                this.ctx.save();
+                
+                this.ctx.shadowBlur = 20;
+                this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
+                
+                this.ctx.drawImage(
+                    this.meowImg,
+                    bullet.x,
+                    bullet.y,
+                    this.currentBulletSize,
+                    this.currentBulletSize
+                );
+                
+                this.ctx.restore();
+            } else {
+                this.ctx.strokeStyle = `rgb(${r * 255},${g * 255},${b * 255})`;
+                this.ctx.beginPath();
+                this.ctx.arc(
+                    bullet.x + this.currentBulletSize/2,
+                    bullet.y + this.currentBulletSize/2,
+                    this.currentBulletSize/2,
+                    0,
+                    Math.PI * 2
+                );
+                this.ctx.stroke();
+            }
+        });
+
+        this.enemies.forEach(enemy => {
+            const r = 0.5 + Math.sin(enemy.colorPhase) * 0.5;
+            const g = 0.5 + Math.sin(enemy.colorPhase + Math.PI * 2/3) * 0.5;
+            const b = 0.5 + Math.sin(enemy.colorPhase + Math.PI * 4/3) * 0.5;
+            
+            this.ctx.strokeStyle = `rgb(${r * 255},${g * 255},${b * 255})`;
+            this.ctx.lineWidth = 2;
+
+            const centerX = enemy.x + CONSTANTS.ENEMY_SIZE/2;
+            const centerY = enemy.y + CONSTANTS.ENEMY_SIZE/2;
+            const size = CONSTANTS.ENEMY_SIZE; 
+
+            switch(enemy.shape) {
+                case 0: 
+                    if (this.stopImg.complete) {
+                        this.ctx.save();
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
+                        this.ctx.drawImage(
+                            this.stopImg,
+                            enemy.x,
+                            enemy.y,
+                            size,
+                            size
+                        );
+                        this.ctx.restore();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.arc(centerX, centerY, size/2, 0, Math.PI * 2);
+                        this.ctx.stroke();
+                    }
+                    break;
+                case 1:
+                    if (this.noImg.complete) {
+                        this.ctx.save();
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
+                        this.ctx.drawImage(
+                            this.noImg,
+                            enemy.x,
+                            enemy.y,
+                            size,
+                            size
+                        );
+                        this.ctx.restore();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(centerX, enemy.y);
+                        this.ctx.lineTo(enemy.x + size, centerY);
+                        this.ctx.lineTo(centerX, enemy.y + size);
+                        this.ctx.lineTo(enemy.x, centerY);
+                        this.ctx.closePath();
+                        this.ctx.stroke();
+                    }
+                    break;
+                case 2:
+                    if (this.downImg.complete) {
+                        this.ctx.save();
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
+                        this.ctx.drawImage(
+                            this.downImg,
+                            enemy.x,
+                            enemy.y,
+                            size,
+                            size
+                        );
+                        this.ctx.restore();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(centerX, enemy.y);
+                        this.ctx.lineTo(enemy.x + size, centerY);
+                        this.ctx.lineTo(centerX, enemy.y + size);
+                        this.ctx.lineTo(enemy.x, centerY);
+                        this.ctx.closePath();
+                        this.ctx.stroke();
+                    }
+                    break;
+                case 3:
+                    if (this.badImg.complete) {
+                        this.ctx.save();
+                        this.ctx.shadowBlur = 20;
+                        this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
+                        this.ctx.drawImage(
+                            this.badImg,
+                            enemy.x,
+                            enemy.y,
+                            size,
+                            size
+                        );
+                        this.ctx.restore();
+                    } else {
+                        this.ctx.beginPath();
+                        this.ctx.moveTo(enemy.x, enemy.y);
+                        this.ctx.lineTo(enemy.x + size, enemy.y + size);
+                        this.ctx.moveTo(enemy.x + size, enemy.y);
+                        this.ctx.lineTo(enemy.x, enemy.y + size);
+                        this.ctx.stroke();
+                    }
+                    break;
+            }
+        });
 
         this.drawUI();
-    }
 
-    drawWall(wall: Wall): void {
-        this.ctx.fillStyle = 'black';
-        this.ctx.fillRect(wall.x - 2, 0, 44, wall.height);
-        this.ctx.fillRect(wall.x - 2, wall.height + CONSTANTS.WALL_GAP, 44, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
-
-        if (this.pipeImg.complete) {
-            const pattern = this.ctx.createPattern(this.pipeImg, 'repeat');
-            if (pattern) {
-                this.ctx.save();
-
-                this.ctx.beginPath();
-                this.ctx.rect(wall.x, 0, 40, wall.height);
-                this.ctx.clip();
-                this.ctx.translate(wall.x, 0);
-                this.ctx.fillStyle = pattern;
-                this.ctx.fillRect(0, 0, 40, wall.height);
-                this.ctx.restore();
-
-                this.ctx.save();
-                this.ctx.beginPath();
-                this.ctx.rect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
-                this.ctx.clip();
-                this.ctx.translate(wall.x, wall.height + CONSTANTS.WALL_GAP);
-                this.ctx.fillStyle = pattern;
-                this.ctx.fillRect(0, 0, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
-                this.ctx.restore();
-            }
-        } else {
-            this.ctx.fillStyle = 'white';
-            this.ctx.fillRect(wall.x, 0, 40, wall.height);
-            this.ctx.fillRect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
-        }
-    }
-
-    drawBullet(bullet: Bullet): void {
-        const r = 0.5 + Math.sin(bullet.colorPhase) * 0.5;
-        const g = 0.5 + Math.sin(bullet.colorPhase + Math.PI * 2/3) * 0.5;
-        const b = 0.5 + Math.sin(bullet.colorPhase + Math.PI * 4/3) * 0.5;
-        
-        if (this.meowImg.complete) {
+        if (this.windActive) {
             this.ctx.save();
+            this.ctx.fillStyle = 'white';
+            this.ctx.strokeStyle = 'white';
+            this.ctx.lineWidth = 2 * CONSTANTS.SCALE_FACTOR;
             
-            this.ctx.shadowBlur = 20;
-            this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
-            
-            this.ctx.drawImage(
-                this.meowImg,
-                bullet.x,
-                bullet.y,
-                this.currentBulletSize,
-                this.currentBulletSize
-            );
+            for (const particle of this.windParticles) {
+                this.ctx.globalAlpha = particle.opacity;
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(particle.x, particle.y);
+                this.ctx.lineTo(
+                    particle.x - this.windDirection * (5 + particle.speed * 2) * CONSTANTS.SCALE_FACTOR, 
+                    particle.y
+                );
+                this.ctx.stroke();
+                
+                this.ctx.beginPath();
+                this.ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                this.ctx.fill();
+            }
             
             this.ctx.restore();
-        } else {
-            this.ctx.strokeStyle = `rgb(${r * 255},${g * 255},${b * 255})`;
-            this.ctx.beginPath();
-            this.ctx.arc(
-                bullet.x + this.currentBulletSize/2,
-                bullet.y + this.currentBulletSize/2,
-                this.currentBulletSize/2,
-                0,
-                Math.PI * 2
-            );
-            this.ctx.stroke();
         }
-    }
 
-    drawEnemy(enemy: Enemy): void {
-        const r = 0.5 + Math.sin(enemy.colorPhase) * 0.5;
-        const g = 0.5 + Math.sin(enemy.colorPhase + Math.PI * 2/3) * 0.5;
-        const b = 0.5 + Math.sin(enemy.colorPhase + Math.PI * 4/3) * 0.5;
-        
-        this.ctx.strokeStyle = `rgb(${r * 255},${g * 255},${b * 255})`;
-        this.ctx.lineWidth = 2;
-
-        const centerX = enemy.x + CONSTANTS.ENEMY_SIZE/2;
-        const centerY = enemy.y + CONSTANTS.ENEMY_SIZE/2;
-        const size = CONSTANTS.ENEMY_SIZE; // Save reference to avoid 'possibly undefined'
-
-        switch(enemy.shape) {
-            case 0: 
-                if (this.stopImg.complete) {
-                    this.ctx.save();
-                    this.ctx.shadowBlur = 20;
-                    this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
-                    this.ctx.drawImage(
-                        this.stopImg,
-                        enemy.x,
-                        enemy.y,
-                        size,
-                        size
-                    );
-                    this.ctx.restore();
-                } else {
-                    this.ctx.beginPath();
-                    this.ctx.arc(centerX, centerY, size/2, 0, Math.PI * 2);
-                    this.ctx.stroke();
-                }
-                break;
-            case 1:
-                if (this.noImg.complete) {
-                    this.ctx.save();
-                    this.ctx.shadowBlur = 20;
-                    this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
-                    this.ctx.drawImage(
-                        this.noImg,
-                        enemy.x,
-                        enemy.y,
-                        size,
-                        size
-                    );
-                    this.ctx.restore();
-                } else {
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(centerX, enemy.y);
-                    this.ctx.lineTo(enemy.x + size, centerY);
-                    this.ctx.lineTo(centerX, enemy.y + size);
-                    this.ctx.lineTo(enemy.x, centerY);
-                    this.ctx.closePath();
-                    this.ctx.stroke();
-                }
-                break;
-            case 2:
-                if (this.downImg.complete) {
-                    this.ctx.save();
-                    this.ctx.shadowBlur = 20;
-                    this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
-                    this.ctx.drawImage(
-                        this.downImg,
-                        enemy.x,
-                        enemy.y,
-                        size,
-                        size
-                    );
-                    this.ctx.restore();
-                } else {
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(centerX, enemy.y);
-                    this.ctx.lineTo(enemy.x + size, centerY);
-                    this.ctx.lineTo(centerX, enemy.y + size);
-                    this.ctx.lineTo(enemy.x, centerY);
-                    this.ctx.closePath();
-                    this.ctx.stroke();
-                }
-                break;
-            case 3:
-                if (this.badImg.complete) {
-                    this.ctx.save();
-                    this.ctx.shadowBlur = 20;
-                    this.ctx.shadowColor = `rgb(${r * 255},${g * 255},${b * 255})`;
-                    this.ctx.drawImage(
-                        this.badImg,
-                        enemy.x,
-                        enemy.y,
-                        size,
-                        size
-                    );
-                    this.ctx.restore();
-                } else {
-                    this.ctx.beginPath();
-                    this.ctx.moveTo(enemy.x, enemy.y);
-                    this.ctx.lineTo(enemy.x + size, enemy.y + size);
-                    this.ctx.moveTo(enemy.x + size, enemy.y);
-                    this.ctx.lineTo(enemy.x, enemy.y + size);
-                    this.ctx.stroke();
-                }
-                break;
+        if (this.windActive) {
+            const fontSize = Math.round(18 * CONSTANTS.UI_SCALE_FACTOR);
+            const windText = `Wind: ${this.windDirection > 0 ? '→' : '←'}`;
+            
+            this.ctx.save();
+            this.ctx.font = `bold ${fontSize}px Arial`;
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            this.ctx.fillText(windText, 10, 60 * CONSTANTS.SCALE_FACTOR);
+            this.ctx.restore();
         }
     }
 
