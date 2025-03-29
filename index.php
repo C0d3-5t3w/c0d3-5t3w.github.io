@@ -190,11 +190,13 @@ $random_quote = $quotes[array_rand($quotes)];
             <h2>
                 Welcome!
             </h2>
+            <h3>
             <div class="date-time">
                 <div class="greeting"><?php echo $greeting; ?>, visitor!</div>
                 <div>Today is <?php echo $current_date; ?></div>
                 <div>Current time: <?php echo $current_time; ?></div>
             </div>
+            </h3>
             <h3 class="about-container">
                 <div id="typing-title"></div>
                 <div id="typing-content" class="typing-content">
