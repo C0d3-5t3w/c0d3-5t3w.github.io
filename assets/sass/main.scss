@@ -69,6 +69,7 @@ h1, h2, h3 {
   text-rendering: auto;
   color: var(--primary-color);
   width: 100%;
+  position: relative;
 }
 
 h1 { background-color: var(--accent-red); }
