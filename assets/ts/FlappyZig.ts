@@ -62,23 +62,23 @@ interface GameConstants {
     WIND_GUST_DURATION: number;
     WIND_PARTICLE_COUNT: number;
 
-    // Health system
     BASE_MAX_HEALTH: number;
     BASE_HEALTH_BAR_WIDTH: number;
     BASE_HEALTH_BAR_HEIGHT: number;
     DAMAGE_IMMUNITY_FRAMES: number;
     
-    // Powerup system
     BASE_POWERUP_SIZE: number;
     POWERUP_DURATION: number;
     POWERUP_SPAWN_CHANCE: number;
     BASE_SHRINK_FACTOR: number;
     BULLET_EFFICIENCY_BOOST: number;
     
-    // Enhanced wind
     BASE_WIND_TORNADO_CHANCE: number;
     BASE_WIND_TORNADO_SIZE: number;
     BASE_WIND_TORNADO_FORCE: number;
+
+    POWERUP_SIZE: number;
+    SHRINK_FACTOR: number;
 }
 
 const CONSTANTS: GameConstants = {
@@ -154,7 +154,10 @@ const CONSTANTS: GameConstants = {
     
     BASE_WIND_TORNADO_CHANCE: 0.15,
     BASE_WIND_TORNADO_SIZE: 120,
-    BASE_WIND_TORNADO_FORCE: 0.8
+    BASE_WIND_TORNADO_FORCE: 0.8,
+
+    POWERUP_SIZE: 40,
+    SHRINK_FACTOR: 0.6
 };
 
 enum PowerupType {
@@ -424,6 +427,9 @@ class Game {
             Math.floor(CONSTANTS.BASE_WIND_PARTICLE_COUNT * 0.6) : 
             CONSTANTS.BASE_WIND_PARTICLE_COUNT;
         
+        CONSTANTS.POWERUP_SIZE = CONSTANTS.BASE_POWERUP_SIZE * CONSTANTS.SCALE_FACTOR;
+        CONSTANTS.SHRINK_FACTOR = CONSTANTS.BASE_SHRINK_FACTOR;
+
         if (this.zig) {
             this.zig.x = CONSTANTS.SCREEN_WIDTH / 4;
         }
