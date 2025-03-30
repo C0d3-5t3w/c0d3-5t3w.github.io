@@ -333,8 +333,8 @@ class Znek {
         const touch = e.changedTouches[0];
         const endX = touch.clientX;
         const endY = touch.clientY;
-        const deltaX = endX - this.touchStartX;
-        const deltaY = endY - this.touchStartY;
+        const deltaX = endX - this.touchStartX!;  
+        const deltaY = endY - this.touchStartY!;  
         const touchDuration = Date.now() - this.touchStartTime;
         
         this.touchStartX = null;
