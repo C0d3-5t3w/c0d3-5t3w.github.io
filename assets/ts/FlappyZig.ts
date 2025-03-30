@@ -221,9 +221,11 @@ interface Powerup {
     colorPhase: number;
 }
 
-interface ActivePowerup {
-    type: PowerupType;
+interface PipeContact {
+    active: boolean;
     timer: number;
+    direction: number; 
+    wallRef: Wall | null;
 }
 
 class Game {
@@ -269,6 +271,9 @@ class Game {
     private activePowerups: ActivePowerup[];
     private zigOriginalWidth: number;
     private zigOriginalHeight: number;
+    private pipeContact: PipeContact;
+    private normalWallSpeed: number;
+    private collisionSlowdownFactor: number = 0.4; 
 
     constructor() {
         this.canvas = document.createElement('canvas');
@@ -364,6 +369,13 @@ class Game {
         this.activePowerups = [];
         this.zigOriginalWidth = CONSTANTS.ZIG_WIDTH;
         this.zigOriginalHeight = CONSTANTS.ZIG_HEIGHT;
+        this.pipeContact = {
+            active: false,
+            timer: 0,
+            direction: 0,
+            wallRef: null
+        };
+        this.normalWallSpeed = CONSTANTS.WALL_SPEED;
     }
 
     setupCanvas(): void {
@@ -517,6 +529,12 @@ class Game {
         this.activePowerups = [];
         CONSTANTS.ZIG_WIDTH = this.zigOriginalWidth;
         CONSTANTS.ZIG_HEIGHT = this.zigOriginalHeight;
+        this.pipeContact = {
+            active: false,
+            timer: 0,
+            direction: 0,
+            wallRef: null
+        };
     }
 
     shoot(): void {
@@ -884,6 +902,23 @@ class Game {
                 this.gameOver = true;
             }
         });
+
+        if (this.pipeContact.active) {
+            this.pipeContact.timer--;
+            if (this.pipeContact.timer <= 0) {
+                this.pipeContact.active = false;
+                this.pipeContact.wallRef = null;
+            }
+        }
+
+        const effectiveWallSpeed = this.pipeContact.active ? 
+            CONSTANTS.WALL_SPEED * this.collisionSlowdownFactor * this.speedMultiplier : 
+            CONSTANTS.WALL_SPEED * this.speedMultiplier;
+
+        this.walls.forEach(wall => {
+            wall.x -= effectiveWallSpeed;
+            
+        });
     }
 
     draw(): void {
@@ -1210,6 +1245,21 @@ class Game {
             this.ctx.fillText(windText, 10, 60 * CONSTANTS.SCALE_FACTOR);
             this.ctx.restore();
         }
+
+        if (this.pipeContact.active && this.pipeContact.wallRef) {
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.3)';
+            
+            const wall = this.pipeContact.wallRef;
+            if (this.pipeContact.direction === 1) { 
+                this.ctx.fillRect(wall.x, 0, 40, wall.height);
+            } else { 
+                this.ctx.fillRect(wall.x, wall.height + CONSTANTS.WALL_GAP, 40, 
+                    CONSTANTS.SCREEN_HEIGHT - wall.height - CONSTANTS.WALL_GAP);
+            }
+            
+            this.ctx.restore();
+        }
     }
 
     drawUI(): void {
@@ -1338,19 +1388,52 @@ class Game {
     }
 
     checkWallCollision(wall: Wall): boolean {
-        const collision = (
-            this.zig.x < wall.x + 40 &&
-            this.zig.x + CONSTANTS.ZIG_WIDTH > wall.x &&
-            (this.zig.y < wall.height ||
-            this.zig.y + CONSTANTS.ZIG_HEIGHT > wall.height + CONSTANTS.WALL_GAP)
-        );
-
-        if (collision && !this.gameOver) {
-            this.zig.velY = CONSTANTS.JUMP_FORCE * 0.7;
-            this.takeDamage(0.5);
-            return false; 
+        const zigLeft = this.zig.x;
+        const zigRight = this.zig.x + CONSTANTS.ZIG_WIDTH;
+        const zigTop = this.zig.y;
+        const zigBottom = this.zig.y + CONSTANTS.ZIG_HEIGHT;
+        
+        const wallLeft = wall.x;
+        const wallRight = wall.x + 40;
+        
+        if (zigRight > wallLeft && zigLeft < wallRight) {
+            if (zigTop < wall.height) {
+                if (!this.pipeContact.active) {
+                    this.pipeContact = {
+                        active: true,
+                        timer: 15, 
+                        direction: 1, 
+                        wallRef: wall
+                    };
+                    
+                    this.zig.velY = Math.max(this.zig.velY, 0) + 2;
+                    this.takeDamage(0.5);
+                }
+                
+                this.zig.y = wall.height;
+                
+                return true;
+            }
+            
+            if (zigBottom > wall.height + CONSTANTS.WALL_GAP) {
+                if (!this.pipeContact.active) {
+                    this.pipeContact = {
+                        active: true,
+                        timer: 15, 
+                        direction: 2, 
+                        wallRef: wall
+                    };
+                    
+                    this.zig.velY = Math.min(this.zig.velY, 0) - 2;
+                    this.takeDamage(0.5);
+                }
+                
+                this.zig.y = wall.height + CONSTANTS.WALL_GAP - CONSTANTS.ZIG_HEIGHT;
+                
+                return true;
+            }
         }
-
+        
         return false;
     }
 
