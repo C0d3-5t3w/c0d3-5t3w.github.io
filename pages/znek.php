@@ -60,9 +60,10 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             document.addEventListener('touchstart', hideControls);
             
             const gameScript = document.createElement('script');
+            gameScript.type = 'module';
             gameScript.src = '../assets/js/Znek.js';
             gameScript.onload = function() {
-                new Znek();
+                new window.Znek();
             };
             document.body.appendChild(gameScript);
         });
