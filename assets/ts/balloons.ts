@@ -272,7 +272,7 @@ document.addEventListener("DOMContentLoaded", () => {
             this.element.style.left = `${this.x}%`;
             this.element.style.top = `${this.y}%`;
             
-            const balloonCenterX = this.x + this.size / 200;
+            const balloonCenterX = this.x + (this.size / 200);
             const balloonBottom = this.y + (this.size * 1.2) / 100;
             
             this.stringElement.style.left = `${balloonCenterX}%`;
@@ -449,11 +449,11 @@ document.addEventListener("DOMContentLoaded", () => {
                 balloonElement.style.height = `${size * 1.2}px`;
                 balloonElement.style.left = `${x}%`;
                 balloonElement.style.top = `${y}%`;
-                balloonElement.style.transform = `rotate(${Math.random() * 10 - 5}deg) scaleY(-1)`;
+                balloonElement.style.transform = `rotate(${Math.random() * 10 - 5}deg)`;
                 
                 balloonElement.style.background = `
-                    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 35%), 
-                    radial-gradient(circle at 30% 80%, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 50%),
+                    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 35%), 
+                    radial-gradient(circle at 70% 80%, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 50%),
                     hsla(${hue}, ${saturation}%, ${lightness}%, 0.85)
                 `;
                 balloonElement.style.boxShadow = 'inset -5px -5px 15px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3)';
@@ -467,7 +467,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 const knotElement = document.createElement('div');
                 knotElement.className = 'balloon-knot';
-                knotElement.style.left = `${x + size/200 - 0.2}%`;
+                knotElement.style.left = `${x + size/200}%`;
                 knotElement.style.top = `${y + size*1.2/100}%`;
                 
                 container.appendChild(balloonElement);
@@ -512,11 +512,16 @@ document.addEventListener("DOMContentLoaded", () => {
             background: rgba(0, 0, 0, 0.5);
             border-radius: 50%;
             z-index: 11;
-            transform: translateX(-50%);
+            transform: translateX(-50%) translateY(-50%);
         }
         
         .balloon {
             transform-origin: center bottom;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        }
+        
+        .string {
+            transform-origin: top center;
         }
     `;
     document.head.appendChild(style);
