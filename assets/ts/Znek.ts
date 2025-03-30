@@ -21,6 +21,12 @@ interface GameConstants {
     SCORE_OUTLINE_COLOR: string;
     SCORE_POSITION_X: number;
     SCORE_POSITION_Y: number;
+    MAX_HIGH_SCORES: number;
+    DEATH_PAUSE: number;
+    GAME_OVER_FONT: string;
+    HIGH_SCORE_FONT: string;
+    HIGH_SCORE_Y_START: number;
+    HIGH_SCORE_Y_SPACING: number;
 }
 
 interface SnakeSegment {
@@ -39,7 +45,7 @@ interface SpecialFood extends Food {
 
 const CONSTANTS: GameConstants = {
     GRID_SIZE: 20,
-    SNAKE_HEAD_SIZE: 30,  
+    SNAKE_HEAD_SIZE: 60, 
     SNAKE_BODY_SIZE: 18,
     FOOD_SIZE: 20,
     SPECIAL_FOOD_SIZE: 24,
@@ -59,7 +65,13 @@ const CONSTANTS: GameConstants = {
     SCORE_COLOR: 'white',
     SCORE_OUTLINE_COLOR: 'black',
     SCORE_POSITION_X: 10,
-    SCORE_POSITION_Y: 30
+    SCORE_POSITION_Y: 30,
+    MAX_HIGH_SCORES: 5,
+    DEATH_PAUSE: 30,
+    GAME_OVER_FONT: '24px Arial',
+    HIGH_SCORE_FONT: '18px Arial',
+    HIGH_SCORE_Y_START: 120,
+    HIGH_SCORE_Y_SPACING: 30
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -76,6 +88,10 @@ class Znek {
     private score: number;
     private specialFood: SpecialFood | null;
     private specialFoodTimeout?: number;
+    private highScores: number[];
+    private gameOver: boolean;
+    private deathTimer: number;
+    private canReset: boolean;
 
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -89,6 +105,10 @@ class Znek {
         this.backgroundImg = new Image();
         this.backgroundImg.src = '../assets/images/gr1.png';
         this.specialFood = null;
+        this.highScores = this.loadHighScores();
+        this.gameOver = false;
+        this.deathTimer = 0;
+        this.canReset = false;
         this.init();
     }
 
@@ -97,6 +117,43 @@ class Znek {
         document.addEventListener('touchstart', this.handleTouch.bind(this));
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
+    }
+
+    private reset(): void {
+        this.snake = [{ x: 10, y: 10 }];
+        this.food = this.generateFood();
+        this.direction = 'right';
+        this.score = 0;
+        this.specialFood = null;
+        this.gameOver = false;
+        this.deathTimer = 0;
+        this.canReset = false;
+        
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+        }
+        if (this.specialFoodTimeout) {
+            clearTimeout(this.specialFoodTimeout);
+        }
+        
+        this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
+        this.scheduleSpecialFood();
+    }
+
+    private loadHighScores(): number[] {
+        const scores = localStorage.getItem('znekHighScores');
+        return scores ? JSON.parse(scores) : [];
+    }
+
+    private saveHighScore(score: number): void {
+        let scores = this.loadHighScores();
+        scores.push(score);
+        scores.sort((a, b) => b - a);
+        if (scores.length > CONSTANTS.MAX_HIGH_SCORES) {
+            scores = scores.slice(0, CONSTANTS.MAX_HIGH_SCORES);
+        }
+        this.highScores = scores;
+        localStorage.setItem('znekHighScores', JSON.stringify(scores));
     }
 
     private generateFood(): Food {
@@ -150,6 +207,11 @@ class Znek {
     }
 
     private handleKeyPress(e: KeyboardEvent): void {
+        if (this.gameOver && this.canReset) {
+            this.reset();
+            return;
+        }
+
         switch(e.key) {
             case 'ArrowUp': 
                 if (this.direction !== 'down') this.direction = 'up'; 
@@ -163,11 +225,22 @@ class Znek {
             case 'ArrowRight': 
                 if (this.direction !== 'left') this.direction = 'right'; 
                 break;
+            case ' ':
+                if (this.gameOver && this.canReset) {
+                    this.reset();
+                }
+                break;
         }
     }
 
     private handleTouch(e: TouchEvent): void {
         e.preventDefault();
+        
+        if (this.gameOver && this.canReset) {
+            this.reset();
+            return;
+        }
+        
         const touch = e.touches[0];
         const screenHeight = window.innerHeight;
         const screenWidth = window.innerWidth;
@@ -186,6 +259,17 @@ class Znek {
     }
 
     private update(): void {
+        if (this.gameOver) {
+            this.deathTimer++;
+            if (this.deathTimer >= CONSTANTS.DEATH_PAUSE) {
+                this.canReset = true;
+                if (this.deathTimer === CONSTANTS.DEATH_PAUSE) {
+                    this.saveHighScore(this.score);
+                }
+            }
+            return;
+        }
+
         const head = { ...this.snake[0] };
 
         switch(this.direction) {
@@ -198,7 +282,7 @@ class Znek {
         if (this.checkCollision(head)) {
             if (this.gameLoop) clearInterval(this.gameLoop);
             if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
-            alert(`Game Over! Score: ${this.score}`);
+            this.gameOver = true;
             return;
         }
 
@@ -357,6 +441,41 @@ class Znek {
             CONSTANTS.SCORE_POSITION_X, 
             CONSTANTS.SCORE_POSITION_Y
         );
+
+        if (this.gameOver) {
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            this.ctx.font = CONSTANTS.GAME_OVER_FONT;
+            this.ctx.fillStyle = 'white';
+            this.ctx.textAlign = 'center';
+            
+            const gameOverText = `Game Over! Score: ${this.score}`;
+            this.ctx.fillText(gameOverText, this.canvas.width / 2, 80);
+            
+            this.ctx.font = CONSTANTS.HIGH_SCORE_FONT;
+            this.ctx.fillText('High Scores:', this.canvas.width / 2, CONSTANTS.HIGH_SCORE_Y_START - CONSTANTS.HIGH_SCORE_Y_SPACING);
+            
+            this.highScores.forEach((score, i) => {
+                this.ctx.fillText(
+                    `${i + 1}. ${score}`, 
+                    this.canvas.width / 2, 
+                    CONSTANTS.HIGH_SCORE_Y_START + (i * CONSTANTS.HIGH_SCORE_Y_SPACING)
+                );
+            });
+            
+            if (this.canReset) {
+                const resetText = 'Press any key or touch to restart';
+                this.ctx.fillText(
+                    resetText, 
+                    this.canvas.width / 2, 
+                    this.canvas.height - 50
+                );
+            }
+            
+            this.ctx.restore();
+        }
     }
     
     private roundedRect(x: number, y: number, width: number, height: number, radius: number): void {
