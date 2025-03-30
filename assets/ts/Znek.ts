@@ -125,6 +125,10 @@ class Znek {
         document.addEventListener('keydown', this.handleKeyPressMethod);
         document.addEventListener('touchstart', this.handleTouchMethod);
         
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+        }
+        
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
     }
@@ -229,6 +233,7 @@ class Znek {
 
     private handleKeyPress(e: KeyboardEvent): void {
         if (this.gameOver && this.canReset) {
+            e.preventDefault();
             this.reset();
             return;
         }
