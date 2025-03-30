@@ -458,3 +458,15 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.znek-container {
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  canvas {
+      border: 2px solid #000;
+      background: #333;
+      margin-top: 20px;
+  }
+}
