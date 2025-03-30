@@ -221,6 +221,11 @@ interface Powerup {
     colorPhase: number;
 }
 
+interface ActivePowerup {
+    type: PowerupType;
+    timer: number;
+}
+
 interface PipeContact {
     active: boolean;
     timer: number;
