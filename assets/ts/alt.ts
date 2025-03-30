@@ -50,7 +50,7 @@ document.addEventListener("DOMContentLoaded", function(){
                 const dy = y - this.lastY;
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
-                const steps = Math.min(Math.floor(distance / 1.5), 6); 
+                const steps = Math.max(1, Math.min(Math.floor(distance / 1.5), 8)); 
                 for (let i = 0; i < steps; i++) {
                     const ratio = i / steps;
                     const point = {

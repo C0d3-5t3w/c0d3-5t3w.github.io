@@ -52,11 +52,11 @@ interface TouchFeedback {
 
 const CONSTANTS: GameConstants = {
     GRID_SIZE: 10, 
-    SNAKE_HEAD_SIZE: 35, 
+    SNAKE_HEAD_SIZE: 40, 
     SNAKE_BODY_SIZE: 16, 
-    FOOD_SIZE: 20, 
-    SPECIAL_FOOD_SIZE: 16,
-    GAME_SPEED: 100,
+    FOOD_SIZE: 30, 
+    SPECIAL_FOOD_SIZE: 25,
+    GAME_SPEED: 90,
     SPECIAL_FOOD_DURATION: 7000,
     SPECIAL_FOOD_MIN_INTERVAL: 10000,
     SPECIAL_FOOD_MAX_INTERVAL: 35000,
@@ -330,12 +330,16 @@ class Znek {
             return;
         }
         
+        const touchStartX = this.touchStartX;
+        const touchStartY = this.touchStartY;
+        const touchStartTime = this.touchStartTime;
+        
         const touch = e.changedTouches[0];
         const endX = touch.clientX;
         const endY = touch.clientY;
-        const deltaX = endX - this.touchStartX!;  
-        const deltaY = endY - this.touchStartY!;  
-        const touchDuration = Date.now() - this.touchStartTime;
+        const deltaX = endX - touchStartX;  
+        const deltaY = endY - touchStartY;  
+        const touchDuration = Date.now() - touchStartTime;
         
         this.touchStartX = null;
         this.touchStartY = null;
@@ -478,9 +482,6 @@ class Znek {
             this.deathTimer++;
             if (this.deathTimer >= CONSTANTS.DEATH_PAUSE) {
                 this.canReset = true;
-                if (this.deathTimer === CONSTANTS.DEATH_PAUSE) {
-                    this.saveHighScore(this.score);
-                }
             }
             return;
         }
@@ -501,6 +502,7 @@ class Znek {
                 if (this.gameLoop) clearInterval(this.gameLoop);
                 if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
                 this.gameOver = true;
+                this.saveHighScore(this.score);
                 return;
             }
 
@@ -679,9 +681,20 @@ class Znek {
             this.ctx.fillText(gameOverText, this.canvas.width / 2, 80);
             
             this.ctx.font = CONSTANTS.HIGH_SCORE_FONT;
+            this.ctx.fillStyle = '#FFD700'; 
             this.ctx.fillText('High Scores:', this.canvas.width / 2, CONSTANTS.HIGH_SCORE_Y_START - CONSTANTS.HIGH_SCORE_Y_SPACING);
             
+            this.ctx.fillStyle = 'white'; 
             this.highScores.forEach((score, i) => {
+                if (score === this.score && this.deathTimer < CONSTANTS.DEATH_PAUSE * 2) {
+                    const pulse = Math.sin(this.deathTimer * 0.1) * 0.5 + 0.5;
+                    this.ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + pulse * 0.5})`; 
+                    this.ctx.font = 'bold ' + CONSTANTS.HIGH_SCORE_FONT; 
+                } else {
+                    this.ctx.fillStyle = 'white';
+                    this.ctx.font = CONSTANTS.HIGH_SCORE_FONT;
+                }
+                
                 this.ctx.fillText(
                     `${i + 1}. ${score}`, 
                     this.canvas.width / 2, 
