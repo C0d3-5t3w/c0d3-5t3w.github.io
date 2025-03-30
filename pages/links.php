@@ -19,6 +19,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
                     <li><a href="https://github.com/C0d3-5t3w" class="enhanced-link">GitHub Profile</a></li>
                     <li><a href="https://github.com/C0d3-5t3w/c0d3-5t3w.github.io" class="enhanced-link">GitHub Repository</a></li>
                     <li><a href="https://m.soundcloud.com/brandon-stewart-792686080" class="enhanced-link">SoundCloud Profile</a></li>
+                    <li><a href="https://discord.com/users/591492297024340002" class="enhanced-link">Discord Profile</a></li>
                 </ul>
             </div>
             <script src="../assets/js/altdropdown.js"></script>
