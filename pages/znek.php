@@ -31,9 +31,14 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         </div>
         <div id="controls" class="game-controls">
             <h3>Controls:</h3>
-            <p>Use Arrow Keys to control the snake</p>
+            <p>Desktop: Use Arrow Keys to control the snake</p>
+            <p>Mobile: Touch screen areas to move</p>
+            <p>⬆️ Top third of screen: Up</p>
+            <p>⬇️ Bottom third of screen: Down</p>
+            <p>⬅️ Left half of middle: Left</p>
+            <p>➡️ Right half of middle: Right</p>
             <p>Collect the red food to grow</p>
-            <p class="instructions">Press any key to start</p>
+            <p class="instructions">Press any key or touch to start</p>
         </div>
     </div>
     <script>

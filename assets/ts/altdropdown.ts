@@ -48,7 +48,7 @@ class PageSiteMapDropdown {
             { text: '🎮 FlappyZig', url: 'FlappyZig.html' },
             { text: '✨ Particles', url: 'particles.html' },
             { text: '🔗 Links', url: 'links.html' },
-            { text: '🕹️ Znek', url: 'znek.php' }
+            { text: '🕹️ Znek', url: 'znek.html' }
         ];
 
         links.forEach(link => {
