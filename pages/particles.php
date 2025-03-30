@@ -63,8 +63,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         }
         .particle-controls {
             position: fixed;
-            bottom: 20px;
-            left: 20px;
+            top: 20px;
+            right: 20px;
             background: rgba(0, 0, 0, 0.7);
             border: 1px solid var(--accent-teal);
             border-radius: 8px;
