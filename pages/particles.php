@@ -80,6 +80,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         }
         
         .particle-controls.collapsed {
+            top: 20px;
+            right: 20px;
             transform: translateY(calc(100% - 40px)) scale(0.9);
         }
         
