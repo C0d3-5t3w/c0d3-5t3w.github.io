@@ -449,7 +449,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 balloonElement.style.height = `${size * 1.2}px`;
                 balloonElement.style.left = `${x}%`;
                 balloonElement.style.top = `${y}%`;
-                balloonElement.style.transform = `rotate(${Math.random() * 10 - 5}deg)`;
+                balloonElement.style.transform = `rotate(${Math.random() * 10 - 5}deg) scaleY(-1)`;
                 
                 balloonElement.style.background = `
                     radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 35%), 
@@ -513,6 +513,10 @@ document.addEventListener("DOMContentLoaded", () => {
             border-radius: 50%;
             z-index: 11;
             transform: translateX(-50%);
+        }
+        
+        .balloon {
+            transform-origin: center bottom;
         }
     `;
     document.head.appendChild(style);
