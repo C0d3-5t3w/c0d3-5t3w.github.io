@@ -257,7 +257,7 @@ $random_quote = $quotes[array_rand($quotes)];
                         -----------------------------
                     </p>
                     <p class="typing-text">
-                        I grew up using a lot of Bash, Python, and C because of Raspberry Pi's.
+                        I grew up using a lot of Bash, Python, C, php, html, and css because of Raspberry Pi's and MySpace.
                     </p>
                     <p class="typing-text">
                         -----------------------------

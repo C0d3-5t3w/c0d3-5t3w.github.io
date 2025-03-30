@@ -29,6 +29,14 @@ document.addEventListener("DOMContentLoaded", () => {
         dragOffsetY: number = 0;
         wobblePhase: number = Math.random() * Math.PI * 2;
         movementInterval: number | null = null;
+        isSquished: boolean = false;
+        squishFactor: number = 1;
+        originalSize: number;
+        restitution: number = 0.65; 
+        deformationDuration: number = 300; 
+        deformationTimer: number | null = null;
+        deformationDirection: string = 'none';
+        airResistance: number = 0.97; 
 
         constructor(options: BalloonOptions) {
             this.element = options.element;
@@ -40,6 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
             this.color = options.color || this.element.style.background;
             this.x = options.x;
             this.y = options.y;
+            this.originalSize = options.size;
 
             this.initialize();
         }
@@ -247,6 +256,19 @@ document.addEventListener("DOMContentLoaded", () => {
         update(): void {
             if (this.isPopping) return;
             
+            if (this.isSquished) {
+                if (this.deformationDirection === 'vertical') {
+                    this.element.style.height = `${this.size * 1.2 * (1 / this.squishFactor)}px`;
+                    this.element.style.width = `${this.size * this.squishFactor}px`;
+                } else if (this.deformationDirection === 'horizontal') {
+                    this.element.style.width = `${this.size * (1 / this.squishFactor)}px`;
+                    this.element.style.height = `${this.size * 1.2 * this.squishFactor}px`;
+                }
+            } else {
+                this.element.style.width = `${this.size}px`;
+                this.element.style.height = `${this.size * 1.2}px`;
+            }
+            
             this.element.style.left = `${this.x}%`;
             this.element.style.top = `${this.y}%`;
             
@@ -268,8 +290,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 this.velocityY -= 0.003 * this.floatSpeed;
                 
-                this.velocityX *= 0.99;
-                this.velocityY *= 0.99;
+                this.velocityX *= this.airResistance;
+                this.velocityY *= this.airResistance;
                 
                 const wobbleX = Math.sin(time * 1.5 + this.wobblePhase) * 0.02 * this.wobbleAmount;
                 const wobbleY = Math.sin(time * 2 + this.wobblePhase) * 0.01 * this.wobbleAmount;
@@ -279,24 +301,50 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 if (this.x < 0) {
                     this.x = 0;
-                    this.velocityX = Math.abs(this.velocityX) * 0.5; 
+                    this.velocityX = Math.abs(this.velocityX) * this.restitution;
+                    this.deform('horizontal');
                 } else if (this.x > 100 - this.size / 10) {
                     this.x = 100 - this.size / 10;
-                    this.velocityX = -Math.abs(this.velocityX) * 0.5;
+                    this.velocityX = -Math.abs(this.velocityX) * this.restitution;
+                    this.deform('horizontal');
                 }
                 
                 if (this.y < 0) {
                     this.y = 0;
-                    this.velocityY = Math.abs(this.velocityY) * 0.5;
+                    this.velocityY = Math.abs(this.velocityY) * this.restitution;
+                    this.velocityX += (Math.random() - 0.5) * 0.1;
+                    this.deform('vertical');
                 } else if (this.y > 100 - this.size / 5) {
                     this.y = 100 - this.size / 5;
-                    this.velocityY = -Math.abs(this.velocityY) * 0.5;
+                    this.velocityY = -Math.abs(this.velocityY) * this.restitution;
+                    this.deform('vertical');
                 }
                 
                 this.update();
             }
             
             requestAnimationFrame(this.animate.bind(this));
+        }
+        
+        deform(direction: string): void {
+            if (this.deformationTimer !== null) {
+                clearTimeout(this.deformationTimer);
+            }
+            
+            this.isSquished = true;
+            this.deformationDirection = direction;
+            
+            const impactForce = direction === 'vertical' 
+                ? Math.abs(this.velocityY) * 2
+                : Math.abs(this.velocityX) * 2;
+                
+            this.squishFactor = Math.min(Math.max(1.1, 1 + impactForce), 1.5);
+            
+            this.deformationTimer = window.setTimeout(() => {
+                this.isSquished = false;
+                this.deformationDirection = 'none';
+                this.deformationTimer = null;
+            }, this.deformationDuration);
         }
     }
 
@@ -361,6 +409,19 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         
         updateControlValues(): void {
+            const currentSize = parseInt(this.sizeSlider.value);
+            const currentSpeed = parseInt(this.speedSlider.value);
+            const currentWobble = parseInt(this.wobbleSlider.value);
+            const currentStringLength = parseInt(this.stringLengthSlider.value);
+            
+            this.balloons.forEach(balloon => {
+                if (!balloon.isPopping && !balloon.isDragging) {
+                    balloon.wobbleAmount = currentWobble;
+                    balloon.floatSpeed = currentSpeed;
+                    balloon.stringLength = currentStringLength;
+                    balloon.updateStringLength();
+                }
+            });
         }
         
         addBalloons(count: number): void {
@@ -379,6 +440,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const y = Math.random() * 100;
                 
                 const hue = Math.round(Math.random() * 360);
+                const saturation = 70 + Math.round(Math.random() * 20);
+                const lightness = 50 + Math.round(Math.random() * 10);
                 
                 const balloonElement = document.createElement('div');
                 balloonElement.className = 'balloon';
@@ -387,11 +450,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 balloonElement.style.left = `${x}%`;
                 balloonElement.style.top = `${y}%`;
                 balloonElement.style.transform = `rotate(${Math.random() * 10 - 5}deg)`;
+                
                 balloonElement.style.background = `
-                    radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
-                    hsla(${hue}, 70%, 50%, 0.8)
+                    radial-gradient(circle at 70% 20%, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 35%), 
+                    radial-gradient(circle at 30% 80%, rgba(0, 0, 0, 0.2) 0%, rgba(0, 0, 0, 0) 50%),
+                    hsla(${hue}, ${saturation}%, ${lightness}%, 0.85)
                 `;
-                balloonElement.style.boxShadow = 'inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3)';
+                balloonElement.style.boxShadow = 'inset -5px -5px 15px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3)';
                 
                 const stringElement = document.createElement('div');
                 stringElement.className = 'string';
@@ -400,8 +465,14 @@ document.addEventListener("DOMContentLoaded", () => {
                 stringElement.style.height = `${currentStringLength}px`;
                 stringElement.style.transform = `rotate(${Math.random() * 10 - 5}deg)`;
                 
+                const knotElement = document.createElement('div');
+                knotElement.className = 'balloon-knot';
+                knotElement.style.left = `${x + size/200 - 0.2}%`;
+                knotElement.style.top = `${y + size*1.2/100}%`;
+                
                 container.appendChild(balloonElement);
                 container.appendChild(stringElement);
+                container.appendChild(knotElement);
                 
                 const balloon = new Balloon({
                     element: balloonElement,
@@ -431,6 +502,20 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const balloonManager = new BalloonManager();
+    
+    const style = document.createElement('style');
+    style.textContent = `
+        .balloon-knot {
+            position: absolute;
+            width: 6px;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 50%;
+            z-index: 11;
+            transform: translateX(-50%);
+        }
+    `;
+    document.head.appendChild(style);
 });
 
 // <3
