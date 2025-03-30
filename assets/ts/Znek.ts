@@ -111,15 +111,16 @@ class Znek {
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
+        
+        this.handleKeyPressMethod = this.handleKeyPress.bind(this);
+        this.handleTouchMethod = this.handleTouch.bind(this);
+        
         this.init();
     }
 
     private init(): void {
-        document.removeEventListener('keydown', this.handleKeyPress.bind(this));
-        document.removeEventListener('touchstart', this.handleTouch.bind(this));
-        
-        this.handleKeyPressMethod = this.handleKeyPress.bind(this);
-        this.handleTouchMethod = this.handleTouch.bind(this);
+        document.removeEventListener('keydown', this.handleKeyPressMethod);
+        document.removeEventListener('touchstart', this.handleTouchMethod);
         
         document.addEventListener('keydown', this.handleKeyPressMethod);
         document.addEventListener('touchstart', this.handleTouchMethod);
