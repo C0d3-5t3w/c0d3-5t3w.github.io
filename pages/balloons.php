@@ -99,6 +99,15 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             border-radius: 5px;
             outline: none;
         }
+        
+        .info-tip {
+            font-size: 0.8rem;
+            margin-top: 10px;
+            padding: 5px;
+            background: rgba(3, 189, 171, 0.2);
+            border-radius: 4px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -121,6 +130,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <input type="range" id="string-length" min="50" max="200" value="100">
         </div>
         <button id="add-balloons" class="pulse-button">Add More Balloons</button>
+        <button id="gravitate-to-cursor" class="pulse-button" style="margin-top: 10px; background-color: var(--accent-orange);">Enable Gravity Attraction</button>
+        <p class="info-tip">Tip: Double tap balloons on mobile to pop them!</p>
     </div>
     
     <div id="balloon-stats" class="terminal-text" style="position: fixed; bottom: 10px; right: 10px; z-index: 100;">

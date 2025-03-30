@@ -43,9 +43,10 @@ interface SpecialFood extends Food {
     timeLeft: number;
 }
 
-interface TouchFeedback {
+interface DPadFeedback {
     x: number;
     y: number;
+    direction: Direction;
     opacity: number;
     timestamp: number;
 }
@@ -100,15 +101,8 @@ class Znek {
     private deathTimer: number;
     private canReset: boolean;
     private handleKeyPressMethod: (e: KeyboardEvent) => void;
-    private handleTouchMethod: (e: TouchEvent) => void;
-    private touchFeedbacks: TouchFeedback[];
+    private dPadFeedbacks: DPadFeedback[];
     private gameStarted: boolean;
-    private touchStartX: number | null;
-    private touchStartY: number | null;
-    private touchStartTime: number | null;
-    private handleTouchStartMethod: (e: TouchEvent) => void;
-    private handleTouchMoveMethod: (e: TouchEvent) => void;
-    private handleTouchEndMethod: (e: TouchEvent) => void;
     
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -126,32 +120,17 @@ class Znek {
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
-        this.touchFeedbacks = [];
+        this.dPadFeedbacks = [];
         this.gameStarted = false;
-        this.touchStartX = null;
-        this.touchStartY = null;
-        this.touchStartTime = null;
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
-        this.handleTouchMethod = this.handleTouch.bind(this);
-        this.handleTouchStartMethod = this.handleTouchStart.bind(this);
-        this.handleTouchMoveMethod = this.handleTouchMove.bind(this);
-        this.handleTouchEndMethod = this.handleTouchEnd.bind(this);
         
         this.init();
     }
 
     private init(): void {
         document.removeEventListener('keydown', this.handleKeyPressMethod);
-        document.removeEventListener('touchstart', this.handleTouchMethod);
-        document.removeEventListener('touchstart', this.handleTouchStartMethod);
-        document.removeEventListener('touchmove', this.handleTouchMoveMethod);
-        document.removeEventListener('touchend', this.handleTouchEndMethod);
-        
         document.addEventListener('keydown', this.handleKeyPressMethod);
-        document.addEventListener('touchstart', this.handleTouchStartMethod);
-        document.addEventListener('touchmove', this.handleTouchMoveMethod);
-        document.addEventListener('touchend', this.handleTouchEndMethod);
         
         if (this.gameLoop) {
             clearInterval(this.gameLoop);
@@ -181,9 +160,6 @@ class Znek {
         this.deathTimer = 0;
         this.canReset = false;
         this.gameStarted = false;
-        this.touchStartX = null;
-        this.touchStartY = null;
-        this.touchStartTime = null;
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
@@ -298,172 +274,89 @@ class Znek {
         }
     }
 
-    private handleTouchStart(e: TouchEvent): void {
-        e.preventDefault();
-        
+    public handleDPadInput(direction: Direction): void {
         if (this.gameOver && this.canReset) {
             this.reset();
             return;
         }
-        
-        const touch = e.touches[0];
-        this.touchStartX = touch.clientX;
-        this.touchStartY = touch.clientY;
-        this.touchStartTime = Date.now();
-        
-        this.touchFeedbacks.push({
-            x: touch.clientX,
-            y: touch.clientY,
-            opacity: 1.0,
-            timestamp: Date.now()
-        });
-    }
 
-    private handleTouchMove(e: TouchEvent): void {
-        e.preventDefault();
-    }
-
-    private handleTouchEnd(e: TouchEvent): void {
-        e.preventDefault();
+        const dPadButtonElement = document.querySelector(`.d-pad-${direction}`);
+        const buttonRect = dPadButtonElement?.getBoundingClientRect();
         
-        if (this.touchStartX === null || this.touchStartY === null || this.touchStartTime === null) {
-            return;
-        }
-        
-        const touchStartX = this.touchStartX;
-        const touchStartY = this.touchStartY;
-        const touchStartTime = this.touchStartTime;
-        
-        const touch = e.changedTouches[0];
-        const endX = touch.clientX;
-        const endY = touch.clientY;
-        const deltaX = endX - touchStartX;  
-        const deltaY = endY - touchStartY; 
-        const touchDuration = Date.now() - touchStartTime;
-        
-        this.touchStartX = null;
-        this.touchStartY = null;
-        this.touchStartTime = null;
-        
-        if (touchDuration > 500) {
-            this.handleTouch(e);
-            return;
-        }
-        
-        const minSwipeDistance = 30;
-        
-        let directionChanged = false;
-        
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            if (Math.abs(deltaX) > minSwipeDistance) {
-                if (deltaX > 0 && this.direction !== 'left') {
-                    this.direction = 'right';
-                    directionChanged = true;
-                } else if (deltaX < 0 && this.direction !== 'right') {
-                    this.direction = 'left';
-                    directionChanged = true;
-                }
-            }
-        } else {
-            if (Math.abs(deltaY) > minSwipeDistance) {
-                if (deltaY > 0 && this.direction !== 'up') {
-                    this.direction = 'down';
-                    directionChanged = true;
-                } else if (deltaY < 0 && this.direction !== 'down') {
-                    this.direction = 'up';
-                    directionChanged = true;
-                }
-            }
-        }
-        
-        if (directionChanged) {
-            this.gameStarted = true;
-            
-            const midX = (touchStartX + endX) / 2;
-            const midY = (touchStartY + endY) / 2;
-            
-            this.touchFeedbacks.push({
-                x: midX,
-                y: midY,
+        if (buttonRect) {
+            this.dPadFeedbacks.push({
+                x: buttonRect.left + buttonRect.width/2,
+                y: buttonRect.top + buttonRect.height/2,
+                direction: direction,
                 opacity: 1.0,
                 timestamp: Date.now()
             });
-        } else {
-            this.handleTouch(e);
-        }
-    }
-
-    private handleTouch(e: TouchEvent): void {
-        e.preventDefault();
-        
-        if (this.gameOver && this.canReset) {
-            this.reset();
-            return;
         }
         
-        let touch;
-        if (e.changedTouches && e.changedTouches.length > 0) {
-            touch = e.changedTouches[0];
-        } else if (e.touches && e.touches.length > 0) {
-            touch = e.touches[0];
-        } else {
-            return;
-        }
-        
-        const screenHeight = window.innerHeight;
-        const screenWidth = window.innerWidth;
-        const y = touch.clientY;
-        const x = touch.clientX;
-        
-        let directionChanged = false;
-        
-        if (y < screenHeight * 0.4) {
-            if (this.direction !== 'down') {
-                this.direction = 'up';
-                directionChanged = true;
-            }
-        } else if (y > screenHeight * 0.6) {
-            if (this.direction !== 'up') {
-                this.direction = 'down';
-                directionChanged = true;
-            }
-        } else if (x < screenWidth * 0.4) {
-            if (this.direction !== 'right') {
-                this.direction = 'left';
-                directionChanged = true;
-            }
-        } else if (x > screenWidth * 0.6) {
-            if (this.direction !== 'left') {
-                this.direction = 'right';
-                directionChanged = true;
-            }
-        }
-        
-        if (directionChanged) {
-            this.gameStarted = true;
+        switch(direction) {
+            case 'up': 
+                if (this.direction !== 'down') {
+                    this.direction = 'up';
+                    this.gameStarted = true;
+                }
+                break;
+            case 'down': 
+                if (this.direction !== 'up') {
+                    this.direction = 'down';
+                    this.gameStarted = true;
+                }
+                break;
+            case 'left': 
+                if (this.direction !== 'right') {
+                    this.direction = 'left';
+                    this.gameStarted = true;
+                }
+                break;
+            case 'right': 
+                if (this.direction !== 'left') {
+                    this.direction = 'right';
+                    this.gameStarted = true;
+                }
+                break;
         }
     }
     
-    private updateTouchFeedbacks(): void {
+    private updateDPadFeedbacks(): void {
         const now = Date.now();
         const fadeTime = 500; 
         
-        this.touchFeedbacks = this.touchFeedbacks.filter(feedback => {
+        this.dPadFeedbacks = this.dPadFeedbacks.filter(feedback => {
             const elapsed = now - feedback.timestamp;
             feedback.opacity = Math.max(0, 1 - elapsed / fadeTime);
             return feedback.opacity > 0;
         });
     }
     
-    private renderTouchFeedbacks(): void {
+    private renderDPadFeedbacks(): void {
         this.ctx.save();
         
-        this.touchFeedbacks.forEach(feedback => {
-            const radius = 60;
+        this.dPadFeedbacks.forEach(feedback => {
+            const radius = 30;
             const gradient = this.ctx.createRadialGradient(
                 feedback.x, feedback.y, 0,
                 feedback.x, feedback.y, radius
             );
+            
+            let color = 'white';
+            switch(feedback.direction) {
+                case 'up':
+                    color = '#4CAF50';
+                    break;
+                case 'down':
+                    color = '#F44336';
+                    break;
+                case 'left':
+                    color = '#2196F3';
+                    break;
+                case 'right':
+                    color = '#FF9800';
+                    break;
+            }
             
             gradient.addColorStop(0, `rgba(255, 255, 255, ${feedback.opacity * 0.7})`);
             gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
@@ -486,7 +379,7 @@ class Znek {
             return;
         }
 
-        this.updateTouchFeedbacks();
+        this.updateDPadFeedbacks();
         
         if (this.gameStarted) {
             const head = { ...this.snake[0] };
@@ -568,7 +461,7 @@ class Znek {
             this.backgroundImg.onload = () => this.draw();
         }
         
-        this.renderTouchFeedbacks();
+        this.renderDPadFeedbacks();
         
         for (let i = this.snake.length - 1; i > 0; i--) {
             const segment = this.snake[i];
@@ -718,7 +611,7 @@ class Znek {
             this.ctx.fillStyle = 'white';
             this.ctx.textAlign = 'center';
             this.ctx.fillText(
-                'Press arrow keys or touch screen to start', 
+                'Press arrow keys or use D-pad to start', 
                 this.canvas.width / 2, 
                 this.canvas.height / 2
             );

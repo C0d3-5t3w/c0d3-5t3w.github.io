@@ -37,6 +37,17 @@ document.addEventListener("DOMContentLoaded", () => {
         deformationTimer: number | null = null;
         deformationDirection: string = 'none';
         airResistance: number = 0.97; 
+        lastTapTime: number = 0;
+        doubleTapDelay: number = 300;
+        windEffect: number = 0;
+        windChangeTime: number = 0;
+        swayAngle: number = 0;
+        randomSwaySpeed: number;
+        windForce: number = 0;
+        stringTension: number = 0.05;
+        stringDamping: number = 0.9;
+        stringAngle: number = 0;
+        stringVelocity: number = 0;
 
         constructor(options: BalloonOptions) {
             this.element = options.element;
@@ -49,6 +60,7 @@ document.addEventListener("DOMContentLoaded", () => {
             this.x = options.x;
             this.y = options.y;
             this.originalSize = options.size;
+            this.randomSwaySpeed = Math.random() * 0.02 + 0.01;
 
             this.initialize();
         }
@@ -100,6 +112,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (this.isPopping) return;
             
             e.preventDefault();
+            
+            const currentTime = Date.now();
+            if (currentTime - this.lastTapTime < this.doubleTapDelay) {
+                this.handlePop();
+                this.lastTapTime = 0;
+                return;
+            }
+            this.lastTapTime = currentTime;
+            
             this.isDragging = true;
             this.element.classList.add('grabbing');
             
@@ -221,7 +242,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const angle = Math.random() * Math.PI * 2;
                 const speed = 2 + Math.random() * 8;
                 const vx = Math.cos(angle) * speed;
-                let vy = Math.sin(angle) * speed; 
+                let vy = Math.sin(angle) * speed - 2;
                 
                 let posX = centerX;
                 let posY = centerY;
@@ -253,6 +274,25 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
 
+        applyGravityAttraction(mouseX: number, mouseY: number, strength: number): void {
+            if (this.isDragging || this.isPopping) return;
+            
+            const mouseXPercent = mouseX / window.innerWidth * 100;
+            const mouseYPercent = mouseY / window.innerHeight * 100;
+            
+            const dx = mouseXPercent - this.x;
+            const dy = mouseYPercent - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 1) {
+                const force = strength / (distance * distance);
+                const angle = Math.atan2(dy, dx);
+                
+                this.velocityX += Math.cos(angle) * force;
+                this.velocityY += Math.sin(angle) * force;
+            }
+        }
+
         update(): void {
             if (this.isPopping) return;
             
@@ -277,9 +317,18 @@ document.addEventListener("DOMContentLoaded", () => {
             
             this.stringElement.style.left = `${balloonCenterX}%`;
             this.stringElement.style.top = `${balloonBottom}%`;
+
+            const targetAngle = Math.max(Math.min(this.velocityX * 10, 45), -45);
+            const angleDiff = targetAngle - this.stringAngle;
+            this.stringVelocity += angleDiff * this.stringTension;
+            this.stringVelocity *= this.stringDamping;
+            this.stringAngle += this.stringVelocity;
             
-            let stringAngle = Math.min(Math.max(this.velocityX * 3, -30), 30);
-            this.stringElement.style.transform = `rotate(${stringAngle}deg)`;
+            this.stringElement.style.transform = `rotate(${this.stringAngle}deg)`;
+
+            const stretchFactor = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY) * 5;
+            const dynamicLength = this.stringLength * (1 + stretchFactor / 100);
+            this.stringElement.style.height = `${dynamicLength}px`;
         }
 
         animate(): void {
@@ -288,13 +337,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!this.isDragging) {
                 const time = Date.now() / 1000;
                 
+                if (time > this.windChangeTime) {
+                    this.windChangeTime = time + Math.random() * 5 + 3;
+                    this.windForce = (Math.random() - 0.5) * 0.1;
+                }
+                
                 this.velocityY -= 0.003 * this.floatSpeed;
+                this.velocityX += this.windForce;
                 
                 this.velocityX *= this.airResistance;
                 this.velocityY *= this.airResistance;
                 
+                this.swayAngle += this.randomSwaySpeed;
                 const wobbleX = Math.sin(time * 1.5 + this.wobblePhase) * 0.02 * this.wobbleAmount;
-                const wobbleY = Math.sin(time * 2 + this.wobblePhase) * 0.01 * this.wobbleAmount;
+                const wobbleY = Math.sin(time * 2 + this.wobblePhase + this.swayAngle) * 0.01 * this.wobbleAmount;
                 
                 this.x += this.velocityX + wobbleX;
                 this.y += this.velocityY + wobbleY;
@@ -303,10 +359,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     this.x = 0;
                     this.velocityX = Math.abs(this.velocityX) * this.restitution;
                     this.deform('horizontal');
+                    this.swayAngle += Math.PI / 4; 
                 } else if (this.x > 100 - this.size / 10) {
                     this.x = 100 - this.size / 10;
                     this.velocityX = -Math.abs(this.velocityX) * this.restitution;
                     this.deform('horizontal');
+                    this.swayAngle += Math.PI / 4;
                 }
                 
                 if (this.y < 0) {
@@ -341,6 +399,12 @@ document.addEventListener("DOMContentLoaded", () => {
             this.squishFactor = Math.min(Math.max(1.1, 1 + impactForce), 1.5);
             
             this.deformationTimer = window.setTimeout(() => {
+                if (direction === 'vertical') {
+                    this.velocityY += (Math.random() - 0.5) * 0.1;
+                } else {
+                    this.velocityX += (Math.random() - 0.5) * 0.1;
+                }
+                
                 this.isSquished = false;
                 this.deformationDirection = 'none';
                 this.deformationTimer = null;
@@ -355,6 +419,14 @@ document.addEventListener("DOMContentLoaded", () => {
         wobbleSlider: HTMLInputElement;
         stringLengthSlider: HTMLInputElement;
         addButton: HTMLButtonElement;
+        gravitateButton: HTMLButtonElement;
+        gravitationEnabled: boolean = false;
+        mouseX: number = 0;
+        mouseY: number = 0;
+        gravityStrength: number = 0.05;
+        globalWindForce: number = 0;
+        globalWindTarget: number = 0;
+        nextWindChange: number = 0;
         
         constructor() {
             this.sizeSlider = document.getElementById('balloon-size') as HTMLInputElement;
@@ -362,12 +434,13 @@ document.addEventListener("DOMContentLoaded", () => {
             this.wobbleSlider = document.getElementById('balloon-wobble') as HTMLInputElement;
             this.stringLengthSlider = document.getElementById('string-length') as HTMLInputElement;
             this.addButton = document.getElementById('add-balloons') as HTMLButtonElement;
+            this.gravitateButton = document.getElementById('gravitate-to-cursor') as HTMLButtonElement;
             
             this.initExistingBalloons();
-            
             this.setupEventListeners();
-            
             this.updateBalloonCount();
+            this.startGravityLoop();
+            this.simulateWind();
         }
         
         initExistingBalloons(): void {
@@ -402,10 +475,63 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.addBalloons(5);
             });
             
+            this.gravitateButton.addEventListener('click', () => {
+                this.gravitationEnabled = !this.gravitationEnabled;
+                this.gravitateButton.textContent = this.gravitationEnabled ? 
+                    'Disable Gravity Attraction' : 'Enable Gravity Attraction';
+                
+                if (this.gravitationEnabled) {
+                    this.gravitateButton.style.background = 'var(--accent-purple)';
+                } else {
+                    this.gravitateButton.style.background = 'var(--accent-orange)';
+                }
+            });
+            
+            document.addEventListener('mousemove', (e) => {
+                this.mouseX = e.clientX;
+                this.mouseY = e.clientY;
+            });
+            
+            document.addEventListener('touchmove', (e) => {
+                if (e.touches.length > 0) {
+                    this.mouseX = e.touches[0].clientX;
+                    this.mouseY = e.touches[0].clientY;
+                }
+            });
+            
             this.sizeSlider.addEventListener('input', this.updateControlValues.bind(this));
             this.speedSlider.addEventListener('input', this.updateControlValues.bind(this));
             this.wobbleSlider.addEventListener('input', this.updateControlValues.bind(this));
             this.stringLengthSlider.addEventListener('input', this.updateControlValues.bind(this));
+        }
+        
+        startGravityLoop(): void {
+            setInterval(() => {
+                if (this.gravitationEnabled) {
+                    this.balloons.forEach(balloon => {
+                        balloon.applyGravityAttraction(this.mouseX, this.mouseY, this.gravityStrength);
+                    });
+                }
+            }, 16); 
+        }
+        
+        simulateWind(): void {
+            setInterval(() => {
+                const now = Date.now();
+                
+                if (now > this.nextWindChange) {
+                    this.nextWindChange = now + (Math.random() * 5000 + 3000);
+                    this.globalWindTarget = (Math.random() - 0.5) * 0.1;
+                }
+                
+                this.globalWindForce += (this.globalWindTarget - this.globalWindForce) * 0.05;
+                
+                this.balloons.forEach(balloon => {
+                    if (!balloon.isDragging && !balloon.isPopping) {
+                        balloon.windForce = this.globalWindForce * (0.8 + Math.random() * 0.4);
+                    }
+                });
+            }, 50);
         }
         
         updateControlValues(): void {
@@ -518,10 +644,23 @@ document.addEventListener("DOMContentLoaded", () => {
         .balloon {
             transform-origin: center bottom;
             border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            transition: transform 0.1s ease, width 0.05s ease-out, height 0.05s ease-out;
         }
         
         .string {
             transform-origin: top center;
+            transition: height 0.3s ease;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            20% { transform: scale(1.2); opacity: 0.9; }
+            40% { transform: scale(1.5); opacity: 0.7; filter: blur(2px); }
+            100% { transform: scale(2); opacity: 0; filter: blur(5px); }
+        }
+        
+        .popping {
+            animation: pop 0.3s forwards cubic-bezier(0.165, 0.84, 0.44, 1);
         }
     `;
     document.head.appendChild(style);

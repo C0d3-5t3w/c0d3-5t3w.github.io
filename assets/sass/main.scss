@@ -768,7 +768,7 @@ canvas {
   z-index: 10;
   cursor: pointer;
   box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 50% 50% 40% 40% / 60% 60% 50% 50%;
+  border-radius: 50% 50% 50% 50% / 60% 60% 30% 30%;
   transition: width 0.1s ease-out, height 0.1s ease-out, transform 0.1s ease-out;
   
   &:before {

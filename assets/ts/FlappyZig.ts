@@ -84,7 +84,7 @@ interface GameConstants {
 const CONSTANTS: GameConstants = {
     BASE_GRAVITY: 0.4,
     BASE_JUMP_FORCE: -9.0,
-    BASE_WALL_SPEED: 9,
+    BASE_WALL_SPEED: 6,
     BASE_WALL_SPACING: 900,
     BASE_WALL_GAP: 225,
     BASE_ZIG_WIDTH: 45,
@@ -92,7 +92,7 @@ const CONSTANTS: GameConstants = {
     DEATH_PAUSE: 60,
     BASE_BULLET_SIZE: 45,
     BASE_ENEMY_SIZE: 35,
-    BASE_ENEMY_SPEED: 11,
+    BASE_ENEMY_SPEED: 7,
     BASE_ENEMY_SPAWN_INTERVAL: 300,
     BASE_ENEMY_BOB_AMPLITUDE: 100,
     ENEMY_BOB_SPEED: 0.1,
@@ -165,7 +165,8 @@ enum PowerupType {
     BULLET_BOOST,
     INVINCIBLE,
     PIPE_BREAKER,
-    ENEMY_KILLER
+    ENEMY_KILLER,
+    CHEESE_HEAL
 }
 
 interface Zig {
@@ -219,6 +220,9 @@ interface Powerup {
     y: number;
     type: PowerupType;
     colorPhase: number;
+    rotation?: number;
+    floatOffset?: number;
+    floatSpeed?: number;
 }
 
 interface ActivePowerup {
@@ -279,6 +283,13 @@ class Game {
     private pipeContact: PipeContact;
     private normalWallSpeed: number;
     private collisionSlowdownFactor: number = 0.4; 
+    private cheeseImg: HTMLImageElement;
+    private nextCheeseSpawn: number;
+    private cheeseSpawnMin: number = 300;
+    private cheeseSpawnMax: number = 800;
+    private cheeseHealAmount: number = 0.5; 
+    private powerupSpawnTimer: number = 0;
+    private powerupSpawnInterval: number = 200; 
 
     constructor() {
         this.canvas = document.createElement('canvas');
@@ -339,6 +350,11 @@ class Game {
         this.badImg = new Image();
         this.badImg.src = '../assets/images/bad.png';
 
+        this.cheeseImg = new Image();
+        this.cheeseImg.src = '../assets/images/cheese.png';
+        
+        this.nextCheeseSpawn = this.getRandomCheeseInterval();
+
         this.setupControls();
         window.addEventListener('resize', () => this.setupCanvas());
         
@@ -381,6 +397,7 @@ class Game {
             wallRef: null
         };
         this.normalWallSpeed = CONSTANTS.WALL_SPEED;
+        this.powerupSpawnTimer = 0;
     }
 
     setupCanvas(): void {
@@ -489,17 +506,6 @@ class Game {
             }
         });
 
-        let lastTap = 0;
-        this.canvas.addEventListener('touchend', (e) => {
-            const curTime = new Date().getTime();
-            const tapLen = curTime - lastTap;
-            if (tapLen < 300 && tapLen > 0 && !this.gameOver) {
-                this.shoot();
-                e.preventDefault();
-            }
-            lastTap = curTime;
-        });
-
         window.addEventListener('orientationchange', () => {
             setTimeout(() => this.setupCanvas(), 200);
         });
@@ -540,6 +546,7 @@ class Game {
             direction: 0,
             wallRef: null
         };
+        this.powerupSpawnTimer = 0;
     }
 
     shoot(): void {
@@ -610,6 +617,10 @@ class Game {
         );
     }
 
+    getRandomCheeseInterval(): number {
+        return Math.floor(Math.random() * (this.cheeseSpawnMax - this.cheeseSpawnMin)) + this.cheeseSpawnMin;
+    }
+
     startWindGust(): void {
         this.windActive = true;
         this.windTimer = 0;
@@ -647,32 +658,59 @@ class Game {
         this.immunityFrames = CONSTANTS.DAMAGE_IMMUNITY_FRAMES;
         
         if (this.health <= 0) {
+            this.health = 0; 
             this.gameOver = true;
             return;
         }
     }
 
     spawnPowerup(): void {
-        if (Math.random() > CONSTANTS.POWERUP_SPAWN_CHANCE) return;
+        if (Math.random() > CONSTANTS.POWERUP_SPAWN_CHANCE * 2) return;
         
         const type = Math.floor(Math.random() * 5);
+        const y = Math.random() * (CONSTANTS.SCREEN_HEIGHT - CONSTANTS.POWERUP_SIZE);
+        
         this.powerups.push({
             x: CONSTANTS.SCREEN_WIDTH,
-            y: Math.random() * (CONSTANTS.SCREEN_HEIGHT - CONSTANTS.POWERUP_SIZE),
+            y: y,
             type,
-            colorPhase: Math.random() * Math.PI * 2
+            colorPhase: Math.random() * Math.PI * 2,
+            rotation: type === PowerupType.CHEESE_HEAL ? Math.random() * Math.PI * 2 : undefined,
+            floatOffset: type === PowerupType.CHEESE_HEAL ? 0 : undefined,
+            floatSpeed: type === PowerupType.CHEESE_HEAL ? 0.03 + Math.random() * 0.02 : undefined
+        });
+        
+        console.log(`Spawned powerup type: ${PowerupType[type]} at position ${y}`);
+    }
+
+    spawnCheese(): void {
+        const y = Math.random() * (CONSTANTS.SCREEN_HEIGHT - CONSTANTS.POWERUP_SIZE);
+        
+        this.powerups.push({
+            x: CONSTANTS.SCREEN_WIDTH,
+            y: y,
+            type: PowerupType.CHEESE_HEAL,
+            colorPhase: Math.random() * Math.PI * 2,
+            rotation: Math.random() * Math.PI * 2,
+            floatOffset: 0,
+            floatSpeed: 0.03 + Math.random() * 0.02
         });
     }
 
     collectPowerup(powerup: Powerup): void {
-        this.activePowerups.push({
-            type: powerup.type,
-            timer: CONSTANTS.POWERUP_DURATION
-        });
+        if (powerup.type === PowerupType.CHEESE_HEAL) {
+            const healAmount = this.maxHealth * this.cheeseHealAmount;
+            this.health = Math.min(this.health + healAmount, this.maxHealth);
+        } else {
+            this.activePowerups.push({
+                type: powerup.type,
+                timer: CONSTANTS.POWERUP_DURATION
+            });
 
-        if (powerup.type === PowerupType.SHRINK) {
-            CONSTANTS.ZIG_WIDTH = this.zigOriginalWidth * CONSTANTS.SHRINK_FACTOR;
-            CONSTANTS.ZIG_HEIGHT = this.zigOriginalHeight * CONSTANTS.SHRINK_FACTOR;
+            if (powerup.type === PowerupType.SHRINK) {
+                CONSTANTS.ZIG_WIDTH = this.zigOriginalWidth * CONSTANTS.SHRINK_FACTOR;
+                CONSTANTS.ZIG_HEIGHT = this.zigOriginalHeight * CONSTANTS.SHRINK_FACTOR;
+            }
         }
     }
 
@@ -836,6 +874,7 @@ class Game {
                 if (this.hasPowerup(PowerupType.PIPE_BREAKER)) {
                     this.walls = this.walls.filter(w => w !== wall);
                 } else {
+                    this.health = 0;
                     this.gameOver = true;
                 }
             }
@@ -847,7 +886,7 @@ class Game {
                     this.enemies = this.enemies.filter(e => e !== enemy);
                     this.score += CONSTANTS.ENEMY_POINT_VALUE;
                 } else if (!this.hasPowerup(PowerupType.INVINCIBLE)) {
-                    this.takeDamage();
+                    this.takeDamage(this.maxHealth * 0.1);
                 }
             }
         });
@@ -872,6 +911,15 @@ class Game {
         this.powerups.forEach(powerup => {
             powerup.x -= CONSTANTS.WALL_SPEED * this.speedMultiplier;
             powerup.colorPhase += 0.05;
+            
+            if (powerup.type === PowerupType.CHEESE_HEAL && powerup.floatSpeed && powerup.floatOffset !== undefined) {
+                powerup.floatOffset += powerup.floatSpeed;
+                powerup.y += Math.sin(powerup.floatOffset) * 0.7;
+                
+                if (powerup.rotation !== undefined) {
+                    powerup.rotation += 0.01;
+                }
+            }
             
             if (this.checkPowerupCollision(powerup)) {
                 this.collectPowerup(powerup);
@@ -924,6 +972,18 @@ class Game {
             wall.x -= effectiveWallSpeed;
             
         });
+
+        this.nextCheeseSpawn--;
+        if (this.nextCheeseSpawn <= 0) {
+            this.spawnCheese();
+            this.nextCheeseSpawn = this.getRandomCheeseInterval();
+        }
+
+        this.powerupSpawnTimer++;
+        if (this.powerupSpawnTimer >= this.powerupSpawnInterval) {
+            this.powerupSpawnTimer = 0;
+            this.spawnPowerup();
+        }
     }
 
     draw(): void {
@@ -1186,27 +1246,45 @@ class Game {
             const y = powerup.y;
             const size = CONSTANTS.POWERUP_SIZE;
             
-            switch(powerup.type) {
-                case PowerupType.SHRINK:
-                    this.ctx.beginPath();
-                    this.ctx.arc(x + size/2, y + size/2, size/3, 0, Math.PI * 2);
-                    break;
-                case PowerupType.BULLET_BOOST:
-                    this.ctx.fillText('↗', x + size/4, y + size*3/4);
-                    break;
-                case PowerupType.INVINCIBLE:
-                    this.ctx.fillText('★', x + size/4, y + size*3/4);
-                    break;
-                case PowerupType.PIPE_BREAKER:
-                    this.ctx.fillText('⚒', x + size/4, y + size*3/4);
-                    break;
-                case PowerupType.ENEMY_KILLER:
-                    this.ctx.fillText('⚔', x + size/4, y + size*3/4);
-                    break;
+            if (powerup.type === PowerupType.CHEESE_HEAL) {
+                this.ctx.save();
+                
+                this.ctx.shadowBlur = 15;
+                this.ctx.shadowColor = 'rgba(255, 215, 0, 0.7)';
+                
+                if (powerup.rotation !== undefined) {
+                    this.ctx.translate(x + size/2, y + size/2);
+                    this.ctx.rotate(powerup.rotation);
+                    this.drawCheese(-size/2, -size/2, size);
+                } else {
+                    this.drawCheese(x, y, size);
+                }
+                
+                this.ctx.restore();
+            } else {
+                switch(powerup.type) {
+                    case PowerupType.SHRINK:
+                        this.ctx.beginPath();
+                        this.ctx.arc(x + size/2, y + size/2, size/3, 0, Math.PI * 2);
+                        break;
+                    case PowerupType.BULLET_BOOST:
+                        this.ctx.fillText('↗', x + size/4, y + size*3/4);
+                        break;
+                    case PowerupType.INVINCIBLE:
+                        this.ctx.fillText('★', x + size/4, y + size*3/4);
+                        break;
+                    case PowerupType.PIPE_BREAKER:
+                        this.ctx.fillText('⚒', x + size/4, y + size*3/4);
+                        break;
+                    case PowerupType.ENEMY_KILLER:
+                        this.ctx.fillText('⚔', x + size/4, y + size*3/4);
+                        break;
+                }
+                
+                this.ctx.fill();
+                this.ctx.stroke();
             }
             
-            this.ctx.fill();
-            this.ctx.stroke();
             this.ctx.restore();
         });
 
@@ -1265,6 +1343,56 @@ class Game {
             
             this.ctx.restore();
         }
+
+        if (this.score < 5) {  
+            this.ctx.save();
+            this.ctx.fillStyle = 'white';
+            this.ctx.font = '14px Arial';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText(`Active Powerups: ${this.activePowerups.length}`, 10, CONSTANTS.SCREEN_HEIGHT - 100);
+            this.ctx.fillText(`Powerups on screen: ${this.powerups.length}`, 10, CONSTANTS.SCREEN_HEIGHT - 85);
+            this.ctx.fillText(`Next powerup in: ${this.powerupSpawnInterval - this.powerupSpawnTimer}`, 10, CONSTANTS.SCREEN_HEIGHT - 70);
+            this.ctx.fillText(`Next cheese in: ${this.nextCheeseSpawn}`, 10, CONSTANTS.SCREEN_HEIGHT - 55);
+            this.ctx.restore();
+        }
+    }
+
+    drawCheese(x: number, y: number, size: number): void {
+        const ctx = this.ctx;
+        
+        ctx.fillStyle = '#FDD835';  
+        ctx.beginPath();
+        ctx.moveTo(x + size * 0.1, y + size * 0.9);  
+        ctx.lineTo(x + size * 0.9, y + size * 0.9); 
+        ctx.lineTo(x + size * 0.5, y + size * 0.1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#FBC02D'; 
+        
+        for (let i = 0; i < 4; i++) {
+            const holeX = x + size * (0.25 + Math.random() * 0.5);
+            const holeY = y + size * (0.3 + Math.random() * 0.4);
+            const holeSize = size * (0.05 + Math.random() * 0.1);
+            
+            ctx.beginPath();
+            ctx.arc(holeX, holeY, holeSize, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        ctx.moveTo(x + size * 0.1, y + size * 0.9);
+        ctx.lineTo(x + size * 0.5, y + size * 0.1);
+        ctx.lineTo(x + size * 0.5, y + size * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.font = `bold ${size*0.4}px Arial`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('+', x + size*0.7, y + size*0.7);
     }
 
     drawUI(): void {
@@ -1312,7 +1440,7 @@ class Game {
                 this.ctx.font = `${smallFontSize}px Arial`;
                 this.ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
                 
-                const controlsHint = 'Left: Jump | Right: Shoot | Double-tap: Shoot';
+                const controlsHint = 'Left: Jump | Right: Shoot';
                 const hintMetrics = this.ctx.measureText(controlsHint);
                 const hintX = (CONSTANTS.SCREEN_WIDTH - hintMetrics.width) / 2;
                 
@@ -1370,11 +1498,21 @@ class Game {
 
     drawActivePowerups(): void {
         const startY = CONSTANTS.SCREEN_HEIGHT - CONSTANTS.BASE_HEALTH_BAR_HEIGHT - 50;
-        const iconSize = 30;
+        const iconSize = 30 * CONSTANTS.SCALE_FACTOR;
+        
+        if (this.activePowerups.length > 0) {
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            this.ctx.fillRect(
+                10, 
+                startY - ((this.activePowerups.length - 1) * (iconSize + 5)) - iconSize,
+                iconSize + 10,
+                this.activePowerups.length * (iconSize + 5)
+            );
+        }
         
         this.activePowerups.forEach((powerup, index) => {
             const timeRatio = powerup.timer / CONSTANTS.POWERUP_DURATION;
-            const x = 10;
+            const x = 15;
             const y = startY - (index * (iconSize + 5));
             
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -1387,7 +1525,7 @@ class Game {
             this.ctx.textAlign = 'center';
             this.ctx.font = `${iconSize * 0.8}px Arial`;
             
-            const icons = ['↓', '↗', '★', '⚒', '⚔'];
+            const icons = ['↓', '↗', '★', '⚒', '⚔', '🧀'];
             this.ctx.fillText(icons[powerup.type], x + iconSize/2, y + iconSize*0.8);
         });
     }
