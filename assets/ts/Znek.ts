@@ -44,12 +44,12 @@ interface SpecialFood extends Food {
 }
 
 const CONSTANTS: GameConstants = {
-    GRID_SIZE: 60,
-    SNAKE_HEAD_SIZE: 30, 
-    SNAKE_BODY_SIZE: 18,
-    FOOD_SIZE: 20,
-    SPECIAL_FOOD_SIZE: 24,
-    GAME_SPEED: 80,
+    GRID_SIZE: 10, 
+    SNAKE_HEAD_SIZE: 20, 
+    SNAKE_BODY_SIZE: 16, 
+    FOOD_SIZE: 20, 
+    SPECIAL_FOOD_SIZE: 16,
+    GAME_SPEED: 100,
     SPECIAL_FOOD_DURATION: 7000,
     SPECIAL_FOOD_MIN_INTERVAL: 10000,
     SPECIAL_FOOD_MAX_INTERVAL: 35000,
@@ -166,6 +166,7 @@ class Znek {
                 y: Math.floor(Math.random() * (this.canvas.height / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE
             };
             
+            // Enhanced check to ensure food isn't generated where it would be impossible to reach
             onSnake = this.snake.some(segment => 
                 segment.x === newFood.x && segment.y === newFood.y
             );
@@ -182,6 +183,8 @@ class Znek {
         this.specialFoodTimeout = window.setTimeout(() => {
             let newSpecialFood: Food;
             let onSnakeOrFood: boolean;
+            let attempts = 0;
+            const maxAttempts = 100; 
             
             do {
                 newSpecialFood = {
@@ -192,6 +195,12 @@ class Znek {
                 onSnakeOrFood = this.snake.some(segment => 
                     segment.x === newSpecialFood.x && segment.y === newSpecialFood.y) || 
                     (this.food.x === newSpecialFood.x && this.food.y === newSpecialFood.y);
+                
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    this.scheduleSpecialFood();
+                    return;
+                }
             } while (onSnakeOrFood);
             
             this.specialFood = {
@@ -224,11 +233,6 @@ class Znek {
                 break;
             case 'ArrowRight': 
                 if (this.direction !== 'left') this.direction = 'right'; 
-                break;
-            case ' ':
-                if (this.gameOver && this.canReset) {
-                    this.reset();
-                }
                 break;
         }
     }
@@ -332,7 +336,9 @@ class Znek {
             return true;
         }
         
-        return this.snake.some((segment, i) => i > 2 && segment.x === head.x && segment.y === head.y);
+        return this.snake.some((segment, i) => 
+            i > 2 && segment.x === head.x && segment.y === head.y
+        );
     }
 
     private draw(): void {
