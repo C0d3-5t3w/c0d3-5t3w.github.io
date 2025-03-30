@@ -20,10 +20,42 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             height: 100%;
             touch-action: none;
         }
+        
+        #restartButton {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background-color: #ff3333;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        #restartButton:hover {
+            background-color: #cc0000;
+            transform: scale(1.05);
+        }
+        
+        #restartButton:active {
+            transform: scale(0.95);
+        }
+        
+        .special-food-note {
+            color: #8800ff;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <script src="../assets/js/altdropdown.js"></script>
+    <button id="restartButton">Restart Game</button>
     <div class="game-container">
         <div class="game-overlay"></div>
         <div class="canvas">
@@ -38,7 +70,9 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <p>⬅️ Left half of middle: Left</p>
             <p>➡️ Right half of middle: Right</p>
             <p>Collect the red food to grow</p>
-            <p class="instructions">Press any key or touch to start</p>
+            <p class="special-food-note">Special purple food appears occasionally and is worth 5 points!</p>
+            <p>Watch out - special food disappears after a few seconds, and makes the tail longer so grab it quickly!</p>
+            <p class="instructions">Press any arrow key or touch screen to begin moving</p>
         </div>
     </div>
     <script>
@@ -46,8 +80,11 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             e.preventDefault();
         }, { passive: false });
         
+        let gameInstance;
+        
         document.addEventListener('DOMContentLoaded', async function() {
             const controls = document.getElementById('controls');
+            const restartButton = document.getElementById('restartButton');
 
             function hideControls() {
                 controls.classList.add('fade-out');
@@ -59,9 +96,20 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             document.addEventListener('keydown', hideControls);
             document.addEventListener('touchstart', hideControls);
             
+            restartButton.addEventListener('click', function() {
+                if (gameInstance) {
+                    gameInstance.reset();
+                }
+            });
+            
             try {
                 const gameModule = await import('../assets/js/Znek.js');
-                new gameModule.default();
+                gameInstance = new gameModule.default();
+                if (gameInstance) {
+                    gameInstance.reset = gameInstance.reset || function() {
+                        location.reload();
+                    };
+                }
             } catch (error) {
                 console.error('Failed to load Znek game:', error);
             }

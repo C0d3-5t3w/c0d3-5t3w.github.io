@@ -43,6 +43,13 @@ interface SpecialFood extends Food {
     timeLeft: number;
 }
 
+interface TouchFeedback {
+    x: number;
+    y: number;
+    opacity: number;
+    timestamp: number;
+}
+
 const CONSTANTS: GameConstants = {
     GRID_SIZE: 10, 
     SNAKE_HEAD_SIZE: 35, 
@@ -94,6 +101,8 @@ class Znek {
     private canReset: boolean;
     private handleKeyPressMethod: (e: KeyboardEvent) => void;
     private handleTouchMethod: (e: TouchEvent) => void;
+    private touchFeedbacks: TouchFeedback[];
+    private gameStarted: boolean;
 
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -111,6 +120,8 @@ class Znek {
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
+        this.touchFeedbacks = [];
+        this.gameStarted = false;
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
         this.handleTouchMethod = this.handleTouch.bind(this);
@@ -133,7 +144,7 @@ class Znek {
         this.scheduleSpecialFood();
     }
 
-    private reset(): void {
+    public reset(): void {
         if (this.gameLoop) {
             clearInterval(this.gameLoop);
             this.gameLoop = undefined;
@@ -152,6 +163,7 @@ class Znek {
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
+        this.gameStarted = false;
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
@@ -240,16 +252,28 @@ class Znek {
 
         switch(e.key) {
             case 'ArrowUp': 
-                if (this.direction !== 'down') this.direction = 'up'; 
+                if (this.direction !== 'down') {
+                    this.direction = 'up';
+                    this.gameStarted = true;
+                }
                 break;
             case 'ArrowDown': 
-                if (this.direction !== 'up') this.direction = 'down'; 
+                if (this.direction !== 'up') {
+                    this.direction = 'down';
+                    this.gameStarted = true;
+                }
                 break;
             case 'ArrowLeft': 
-                if (this.direction !== 'right') this.direction = 'left'; 
+                if (this.direction !== 'right') {
+                    this.direction = 'left';
+                    this.gameStarted = true;
+                }
                 break;
             case 'ArrowRight': 
-                if (this.direction !== 'left') this.direction = 'right'; 
+                if (this.direction !== 'left') {
+                    this.direction = 'right';
+                    this.gameStarted = true;
+                }
                 break;
         }
     }
@@ -268,15 +292,65 @@ class Znek {
         const y = touch.clientY;
         const x = touch.clientX;
 
+        this.touchFeedbacks.push({
+            x: touch.clientX,
+            y: touch.clientY,
+            opacity: 1.0,
+            timestamp: Date.now()
+        });
+
+        let directionChanged = false;
+
         if (y < screenHeight / 3 && this.direction !== 'down') {
             this.direction = 'up';
+            directionChanged = true;
         } else if (y > screenHeight * 2 / 3 && this.direction !== 'up') {
             this.direction = 'down';
+            directionChanged = true;
         } else if (x < screenWidth / 2 && this.direction !== 'right') {
             this.direction = 'left';
+            directionChanged = true;
         } else if (this.direction !== 'left') {
             this.direction = 'right';
+            directionChanged = true;
         }
+
+        if (directionChanged) {
+            this.gameStarted = true;
+        }
+    }
+    
+    private updateTouchFeedbacks(): void {
+        const now = Date.now();
+        const fadeTime = 500; 
+        
+        this.touchFeedbacks = this.touchFeedbacks.filter(feedback => {
+            const elapsed = now - feedback.timestamp;
+            feedback.opacity = Math.max(0, 1 - elapsed / fadeTime);
+            return feedback.opacity > 0;
+        });
+    }
+    
+    private renderTouchFeedbacks(): void {
+        this.ctx.save();
+        
+        this.touchFeedbacks.forEach(feedback => {
+            const radius = 60;
+            const gradient = this.ctx.createRadialGradient(
+                feedback.x, feedback.y, 0,
+                feedback.x, feedback.y, radius
+            );
+            
+            gradient.addColorStop(0, `rgba(255, 255, 255, ${feedback.opacity * 0.7})`);
+            gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.beginPath();
+            this.ctx.arc(feedback.x, feedback.y, radius, 0, Math.PI * 2);
+            this.ctx.fill();
+        });
+        
+        this.ctx.restore();
     }
 
     private update(): void {
@@ -291,57 +365,61 @@ class Znek {
             return;
         }
 
-        const head = { ...this.snake[0] };
-
-        switch(this.direction) {
-            case 'up': head.y -= CONSTANTS.GRID_SIZE; break;
-            case 'down': head.y += CONSTANTS.GRID_SIZE; break;
-            case 'left': head.x -= CONSTANTS.GRID_SIZE; break;
-            case 'right': head.x += CONSTANTS.GRID_SIZE; break;
-        }
-
-        if (this.checkCollision(head)) {
-            if (this.gameLoop) clearInterval(this.gameLoop);
-            if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
-            this.gameOver = true;
-            return;
-        }
-
-        this.snake.unshift(head);
-
-        const headCenterX = head.x + CONSTANTS.SNAKE_HEAD_SIZE / 2;
-        const headCenterY = head.y + CONSTANTS.SNAKE_HEAD_SIZE / 2;
-        const foodCenterX = this.food.x + CONSTANTS.FOOD_SIZE / 2;
-        const foodCenterY = this.food.y + CONSTANTS.FOOD_SIZE / 2;
+        this.updateTouchFeedbacks();
         
-        const headToFoodDistance = Math.sqrt(
-            Math.pow(headCenterX - foodCenterX, 2) + 
-            Math.pow(headCenterY - foodCenterY, 2)
-        );
-        
-        const collisionRadius = (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.FOOD_SIZE) / 2.5;
-        
-        if (headToFoodDistance < collisionRadius) {
-            this.food = this.generateFood();
-            this.score += CONSTANTS.REGULAR_FOOD_POINTS;
-        } else if (this.specialFood) {
-            const specialFoodCenterX = this.specialFood.x + CONSTANTS.SPECIAL_FOOD_SIZE / 2;
-            const specialFoodCenterY = this.specialFood.y + CONSTANTS.SPECIAL_FOOD_SIZE / 2;
+        if (this.gameStarted) {
+            const head = { ...this.snake[0] };
+
+            switch(this.direction) {
+                case 'up': head.y -= CONSTANTS.GRID_SIZE; break;
+                case 'down': head.y += CONSTANTS.GRID_SIZE; break;
+                case 'left': head.x -= CONSTANTS.GRID_SIZE; break;
+                case 'right': head.x += CONSTANTS.GRID_SIZE; break;
+            }
+
+            if (this.checkCollision(head)) {
+                if (this.gameLoop) clearInterval(this.gameLoop);
+                if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
+                this.gameOver = true;
+                return;
+            }
+
+            this.snake.unshift(head);
+
+            const headCenterX = head.x + CONSTANTS.SNAKE_HEAD_SIZE / 2;
+            const headCenterY = head.y + CONSTANTS.SNAKE_HEAD_SIZE / 2;
+            const foodCenterX = this.food.x + CONSTANTS.FOOD_SIZE / 2;
+            const foodCenterY = this.food.y + CONSTANTS.FOOD_SIZE / 2;
             
-            const headToSpecialFoodDistance = Math.sqrt(
-                Math.pow(headCenterX - specialFoodCenterX, 2) + 
-                Math.pow(headCenterY - specialFoodCenterY, 2)
+            const headToFoodDistance = Math.sqrt(
+                Math.pow(headCenterX - foodCenterX, 2) + 
+                Math.pow(headCenterY - foodCenterY, 2)
             );
             
-            const specialCollisionRadius = (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.SPECIAL_FOOD_SIZE) / 2.5;
+            const collisionRadius = (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.FOOD_SIZE) / 2.5;
             
-            if (headToSpecialFoodDistance < specialCollisionRadius) {
-                this.score += CONSTANTS.SPECIAL_FOOD_POINTS;
-                this.specialFood = null;
-                this.scheduleSpecialFood();
+            if (headToFoodDistance < collisionRadius) {
+                this.food = this.generateFood();
+                this.score += CONSTANTS.REGULAR_FOOD_POINTS;
+            } else if (this.specialFood) {
+                const specialFoodCenterX = this.specialFood.x + CONSTANTS.SPECIAL_FOOD_SIZE / 2;
+                const specialFoodCenterY = this.specialFood.y + CONSTANTS.SPECIAL_FOOD_SIZE / 2;
+                
+                const headToSpecialFoodDistance = Math.sqrt(
+                    Math.pow(headCenterX - specialFoodCenterX, 2) + 
+                    Math.pow(headCenterY - specialFoodCenterY, 2)
+                );
+                
+                const specialCollisionRadius = (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.SPECIAL_FOOD_SIZE) / 2.5;
+                
+                if (headToSpecialFoodDistance < specialCollisionRadius) {
+                    this.score += CONSTANTS.SPECIAL_FOOD_POINTS;
+                    this.specialFood = null;
+                    this.scheduleSpecialFood();
+                }
+            } else {
+                this.snake.pop();
             }
-        } else {
-            this.snake.pop();
         }
 
         this.draw();
@@ -367,6 +445,8 @@ class Znek {
             
             this.backgroundImg.onload = () => this.draw();
         }
+        
+        this.renderTouchFeedbacks();
         
         for (let i = this.snake.length - 1; i > 0; i--) {
             const segment = this.snake[i];
@@ -498,6 +578,17 @@ class Znek {
                 );
             }
             
+            this.ctx.restore();
+        } else if (!this.gameStarted) {
+            this.ctx.save();
+            this.ctx.font = '24px Arial';
+            this.ctx.fillStyle = 'white';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(
+                'Press arrow keys or touch screen to start', 
+                this.canvas.width / 2, 
+                this.canvas.height / 2
+            );
             this.ctx.restore();
         }
     }
