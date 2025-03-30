@@ -45,7 +45,7 @@ interface SpecialFood extends Food {
 
 const CONSTANTS: GameConstants = {
     GRID_SIZE: 10, 
-    SNAKE_HEAD_SIZE: 20, 
+    SNAKE_HEAD_SIZE: 35, 
     SNAKE_BODY_SIZE: 16, 
     FOOD_SIZE: 20, 
     SPECIAL_FOOD_SIZE: 16,
@@ -92,6 +92,8 @@ class Znek {
     private gameOver: boolean;
     private deathTimer: number;
     private canReset: boolean;
+    private handleKeyPressMethod: (e: KeyboardEvent) => void;
+    private handleTouchMethod: (e: TouchEvent) => void;
 
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -113,13 +115,30 @@ class Znek {
     }
 
     private init(): void {
-        document.addEventListener('keydown', this.handleKeyPress.bind(this));
-        document.addEventListener('touchstart', this.handleTouch.bind(this));
+        document.removeEventListener('keydown', this.handleKeyPress.bind(this));
+        document.removeEventListener('touchstart', this.handleTouch.bind(this));
+        
+        this.handleKeyPressMethod = this.handleKeyPress.bind(this);
+        this.handleTouchMethod = this.handleTouch.bind(this);
+        
+        document.addEventListener('keydown', this.handleKeyPressMethod);
+        document.addEventListener('touchstart', this.handleTouchMethod);
+        
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
     }
 
     private reset(): void {
+        if (this.gameLoop) {
+            clearInterval(this.gameLoop);
+            this.gameLoop = undefined;
+        }
+        
+        if (this.specialFoodTimeout) {
+            clearTimeout(this.specialFoodTimeout);
+            this.specialFoodTimeout = undefined;
+        }
+        
         this.snake = [{ x: 10, y: 10 }];
         this.food = this.generateFood();
         this.direction = 'right';
@@ -128,13 +147,6 @@ class Znek {
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
-        
-        if (this.gameLoop) {
-            clearInterval(this.gameLoop);
-        }
-        if (this.specialFoodTimeout) {
-            clearTimeout(this.specialFoodTimeout);
-        }
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
@@ -166,7 +178,6 @@ class Znek {
                 y: Math.floor(Math.random() * (this.canvas.height / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE
             };
             
-            // Enhanced check to ensure food isn't generated where it would be impossible to reach
             onSnake = this.snake.some(segment => 
                 segment.x === newFood.x && segment.y === newFood.y
             );
@@ -379,10 +390,11 @@ class Znek {
             this.ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
             this.ctx.shadowBlur = 10;
             
+            const offsetX = (CONSTANTS.SNAKE_HEAD_SIZE - CONSTANTS.GRID_SIZE) / 2;
             this.ctx.drawImage(
                 this.snakeImg, 
-                head.x - (CONSTANTS.SNAKE_HEAD_SIZE - CONSTANTS.GRID_SIZE) / 2, 
-                head.y - (CONSTANTS.SNAKE_HEAD_SIZE - CONSTANTS.GRID_SIZE) / 2, 
+                head.x - offsetX, 
+                head.y - offsetX, 
                 CONSTANTS.SNAKE_HEAD_SIZE, 
                 CONSTANTS.SNAKE_HEAD_SIZE
             );
