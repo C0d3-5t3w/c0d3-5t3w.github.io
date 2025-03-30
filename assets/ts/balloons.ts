@@ -212,7 +212,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const angle = Math.random() * Math.PI * 2;
                 const speed = 2 + Math.random() * 8;
                 const vx = Math.cos(angle) * speed;
-                const vy = Math.sin(angle) * speed;
+                let vy = Math.sin(angle) * speed; 
                 
                 let posX = centerX;
                 let posY = centerY;

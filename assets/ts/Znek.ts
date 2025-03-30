@@ -338,7 +338,7 @@ class Znek {
         const endX = touch.clientX;
         const endY = touch.clientY;
         const deltaX = endX - touchStartX;  
-        const deltaY = endY - touchStartY;  
+        const deltaY = endY - touchStartY; 
         const touchDuration = Date.now() - touchStartTime;
         
         this.touchStartX = null;
@@ -379,8 +379,8 @@ class Znek {
         if (directionChanged) {
             this.gameStarted = true;
             
-            const midX = (this.touchStartX + endX) / 2;
-            const midY = (this.touchStartY + endY) / 2;
+            const midX = (touchStartX + endX) / 2;
+            const midY = (touchStartY + endY) / 2;
             
             this.touchFeedbacks.push({
                 x: midX,
