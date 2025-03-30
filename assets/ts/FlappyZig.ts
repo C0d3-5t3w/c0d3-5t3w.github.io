@@ -130,14 +130,14 @@ const CONSTANTS: GameConstants = {
     TRAIL_LINE_WIDTH: 8,
     BASE_MOVING_PIPE_AMPLITUDE: 150,
     BASE_MOVING_PIPE_SPEED: 0.02,
-    BASE_WIND_GUST_FORCE: 0.5,
+    BASE_WIND_GUST_FORCE: 0.8, 
     BASE_WIND_GUST_DURATION: 120,
-    BASE_WIND_GUST_INTERVAL_MIN: 300,
-    BASE_WIND_GUST_INTERVAL_MAX: 800,
+    BASE_WIND_GUST_INTERVAL_MIN: 200,
+    BASE_WIND_GUST_INTERVAL_MAX: 500,
     BASE_WIND_PARTICLE_COUNT: 80,
     MOVING_PIPE_AMPLITUDE: 150,
     MOVING_PIPE_SPEED: 0.02,
-    WIND_GUST_FORCE: 0.5,
+    WIND_GUST_FORCE: 0.8,
     WIND_GUST_DURATION: 120,
     WIND_PARTICLE_COUNT: 80,
 
@@ -148,7 +148,7 @@ const CONSTANTS: GameConstants = {
     
     BASE_POWERUP_SIZE: 40,
     POWERUP_DURATION: 600, 
-    POWERUP_SPAWN_CHANCE: 0.003, 
+    POWERUP_SPAWN_CHANCE: 0.01,
     BASE_SHRINK_FACTOR: 0.6,
     BULLET_EFFICIENCY_BOOST: 3,
     
@@ -591,13 +591,16 @@ class Game {
         this.windActive = true;
         this.windTimer = 0;
         this.windDirection = Math.random() > 0.5 ? 1 : -1;
-        this.windIntensity = (0.5 + Math.random() * 0.5) * CONSTANTS.WIND_GUST_FORCE;
+        this.windIntensity = (0.7 + Math.random() * 0.6) * CONSTANTS.WIND_GUST_FORCE;
         this.windDuration = CONSTANTS.WIND_GUST_DURATION * (0.8 + Math.random() * 0.4);
-        
+
+        const particleCount = CONSTANTS.WIND_PARTICLE_COUNT * 1.5;
         this.windParticles = [];
-        for (let i = 0; i < CONSTANTS.WIND_PARTICLE_COUNT; i++) {
+        for (let i = 0; i < particleCount; i++) {
             this.createWindParticle();
         }
+
+        this.zig.velY += (Math.random() - 0.5) * 2;
     }
     
     createWindParticle(): void {
@@ -1335,12 +1338,20 @@ class Game {
     }
 
     checkWallCollision(wall: Wall): boolean {
-        return (
+        const collision = (
             this.zig.x < wall.x + 40 &&
             this.zig.x + CONSTANTS.ZIG_WIDTH > wall.x &&
             (this.zig.y < wall.height ||
             this.zig.y + CONSTANTS.ZIG_HEIGHT > wall.height + CONSTANTS.WALL_GAP)
         );
+
+        if (collision && !this.gameOver) {
+            this.zig.velY = CONSTANTS.JUMP_FORCE * 0.7;
+            this.takeDamage(0.5);
+            return false; 
+        }
+
+        return false;
     }
 
     checkEnemyCollision(enemy: Enemy): boolean {
