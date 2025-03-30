@@ -103,7 +103,13 @@ class Znek {
     private handleTouchMethod: (e: TouchEvent) => void;
     private touchFeedbacks: TouchFeedback[];
     private gameStarted: boolean;
-
+    private touchStartX: number | null;
+    private touchStartY: number | null;
+    private touchStartTime: number | null;
+    private handleTouchStartMethod: (e: TouchEvent) => void;
+    private handleTouchMoveMethod: (e: TouchEvent) => void;
+    private handleTouchEndMethod: (e: TouchEvent) => void;
+    
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
         this.ctx = this.canvas.getContext('2d')!;
@@ -122,9 +128,15 @@ class Znek {
         this.canReset = false;
         this.touchFeedbacks = [];
         this.gameStarted = false;
+        this.touchStartX = null;
+        this.touchStartY = null;
+        this.touchStartTime = null;
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
         this.handleTouchMethod = this.handleTouch.bind(this);
+        this.handleTouchStartMethod = this.handleTouchStart.bind(this);
+        this.handleTouchMoveMethod = this.handleTouchMove.bind(this);
+        this.handleTouchEndMethod = this.handleTouchEnd.bind(this);
         
         this.init();
     }
@@ -132,9 +144,14 @@ class Znek {
     private init(): void {
         document.removeEventListener('keydown', this.handleKeyPressMethod);
         document.removeEventListener('touchstart', this.handleTouchMethod);
+        document.removeEventListener('touchstart', this.handleTouchStartMethod);
+        document.removeEventListener('touchmove', this.handleTouchMoveMethod);
+        document.removeEventListener('touchend', this.handleTouchEndMethod);
         
         document.addEventListener('keydown', this.handleKeyPressMethod);
-        document.addEventListener('touchstart', this.handleTouchMethod);
+        document.addEventListener('touchstart', this.handleTouchStartMethod);
+        document.addEventListener('touchmove', this.handleTouchMoveMethod);
+        document.addEventListener('touchend', this.handleTouchEndMethod);
         
         if (this.gameLoop) {
             clearInterval(this.gameLoop);
@@ -164,6 +181,9 @@ class Znek {
         this.deathTimer = 0;
         this.canReset = false;
         this.gameStarted = false;
+        this.touchStartX = null;
+        this.touchStartY = null;
+        this.touchStartTime = null;
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
@@ -278,7 +298,7 @@ class Znek {
         }
     }
 
-    private handleTouch(e: TouchEvent): void {
+    private handleTouchStart(e: TouchEvent): void {
         e.preventDefault();
         
         if (this.gameOver && this.canReset) {
@@ -287,34 +307,134 @@ class Znek {
         }
         
         const touch = e.touches[0];
-        const screenHeight = window.innerHeight;
-        const screenWidth = window.innerWidth;
-        const y = touch.clientY;
-        const x = touch.clientX;
-
+        this.touchStartX = touch.clientX;
+        this.touchStartY = touch.clientY;
+        this.touchStartTime = Date.now();
+        
         this.touchFeedbacks.push({
             x: touch.clientX,
             y: touch.clientY,
             opacity: 1.0,
             timestamp: Date.now()
         });
+    }
 
-        let directionChanged = false;
+    private handleTouchMove(e: TouchEvent): void {
+        e.preventDefault();
+    }
 
-        if (y < screenHeight / 3 && this.direction !== 'down') {
-            this.direction = 'up';
-            directionChanged = true;
-        } else if (y > screenHeight * 2 / 3 && this.direction !== 'up') {
-            this.direction = 'down';
-            directionChanged = true;
-        } else if (x < screenWidth / 2 && this.direction !== 'right') {
-            this.direction = 'left';
-            directionChanged = true;
-        } else if (this.direction !== 'left') {
-            this.direction = 'right';
-            directionChanged = true;
+    private handleTouchEnd(e: TouchEvent): void {
+        e.preventDefault();
+        
+        if (this.touchStartX === null || this.touchStartY === null || this.touchStartTime === null) {
+            return;
         }
+        
+        const touch = e.changedTouches[0];
+        const endX = touch.clientX;
+        const endY = touch.clientY;
+        const deltaX = endX - this.touchStartX;
+        const deltaY = endY - this.touchStartY;
+        const touchDuration = Date.now() - this.touchStartTime;
+        
+        this.touchStartX = null;
+        this.touchStartY = null;
+        this.touchStartTime = null;
+        
+        if (touchDuration > 500) {
+            this.handleTouch(e);
+            return;
+        }
+        
+        const minSwipeDistance = 30;
+        
+        let directionChanged = false;
+        
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            if (Math.abs(deltaX) > minSwipeDistance) {
+                if (deltaX > 0 && this.direction !== 'left') {
+                    this.direction = 'right';
+                    directionChanged = true;
+                } else if (deltaX < 0 && this.direction !== 'right') {
+                    this.direction = 'left';
+                    directionChanged = true;
+                }
+            }
+        } else {
+            if (Math.abs(deltaY) > minSwipeDistance) {
+                if (deltaY > 0 && this.direction !== 'up') {
+                    this.direction = 'down';
+                    directionChanged = true;
+                } else if (deltaY < 0 && this.direction !== 'down') {
+                    this.direction = 'up';
+                    directionChanged = true;
+                }
+            }
+        }
+        
+        if (directionChanged) {
+            this.gameStarted = true;
+            
+            const midX = (this.touchStartX + endX) / 2;
+            const midY = (this.touchStartY + endY) / 2;
+            
+            this.touchFeedbacks.push({
+                x: midX,
+                y: midY,
+                opacity: 1.0,
+                timestamp: Date.now()
+            });
+        } else {
+            this.handleTouch(e);
+        }
+    }
 
+    private handleTouch(e: TouchEvent): void {
+        e.preventDefault();
+        
+        if (this.gameOver && this.canReset) {
+            this.reset();
+            return;
+        }
+        
+        let touch;
+        if (e.changedTouches && e.changedTouches.length > 0) {
+            touch = e.changedTouches[0];
+        } else if (e.touches && e.touches.length > 0) {
+            touch = e.touches[0];
+        } else {
+            return;
+        }
+        
+        const screenHeight = window.innerHeight;
+        const screenWidth = window.innerWidth;
+        const y = touch.clientY;
+        const x = touch.clientX;
+        
+        let directionChanged = false;
+        
+        if (y < screenHeight * 0.4) {
+            if (this.direction !== 'down') {
+                this.direction = 'up';
+                directionChanged = true;
+            }
+        } else if (y > screenHeight * 0.6) {
+            if (this.direction !== 'up') {
+                this.direction = 'down';
+                directionChanged = true;
+            }
+        } else if (x < screenWidth * 0.4) {
+            if (this.direction !== 'right') {
+                this.direction = 'left';
+                directionChanged = true;
+            }
+        } else if (x > screenWidth * 0.6) {
+            if (this.direction !== 'left') {
+                this.direction = 'right';
+                directionChanged = true;
+            }
+        }
+        
         if (directionChanged) {
             this.gameStarted = true;
         }
