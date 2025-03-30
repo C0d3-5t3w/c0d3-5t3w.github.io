@@ -6,7 +6,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/alt.css">
     <title>Znek Game</title>
@@ -57,9 +57,13 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             }
 
             document.addEventListener('keydown', hideControls);
+            document.addEventListener('touchstart', hideControls);
             
             const gameScript = document.createElement('script');
             gameScript.src = '../assets/js/Znek.js';
+            gameScript.onload = function() {
+                new Znek();
+            };
             document.body.appendChild(gameScript);
         });
     </script>

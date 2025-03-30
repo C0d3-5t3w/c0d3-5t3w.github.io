@@ -1,4 +1,4 @@
-export class Znek {
+export default class Znek {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private snake: { x: number, y: number }[];
@@ -16,7 +16,7 @@ export class Znek {
         this.direction = 'right';
         this.score = 0;
         this.snakeImg = new Image();
-        this.snakeImg.src = 'assets/images/z1.png';
+        this.snakeImg.src = '../assets/images/z1.png';
         this.init();
     }
 
@@ -119,4 +119,7 @@ export class Znek {
         this.ctx.fillText(`Score: ${this.score}`, 10, 30);
     }
 }
+
+(window as any).Znek = Znek;
+
 // <3
