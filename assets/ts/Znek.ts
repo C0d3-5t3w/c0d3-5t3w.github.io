@@ -5,7 +5,7 @@ export class Znek {
     private food: { x: number, y: number };
     private direction: string;
     private snakeImg: HTMLImageElement;
-    private gameLoop: number;
+    private gameLoop?: number;
     private score: number;
 
     constructor() {
@@ -22,6 +22,7 @@ export class Znek {
 
     private init(): void {
         document.addEventListener('keydown', this.handleKeyPress.bind(this));
+        document.addEventListener('touchstart', this.handleTouch.bind(this));
         this.gameLoop = setInterval(this.update.bind(this), 100);
     }
 
@@ -38,6 +39,25 @@ export class Znek {
             case 'ArrowDown': this.direction = 'down'; break;
             case 'ArrowLeft': this.direction = 'left'; break;
             case 'ArrowRight': this.direction = 'right'; break;
+        }
+    }
+
+    private handleTouch(e: TouchEvent): void {
+        e.preventDefault();
+        const touch = e.touches[0];
+        const screenWidth = window.innerWidth;
+        const screenHeight = window.innerHeight;
+        const x = touch.clientX;
+        const y = touch.clientY;
+
+        if (y < screenHeight / 3) {
+            this.direction = 'up';
+        } else if (y > screenHeight * 2 / 3) {
+            this.direction = 'down';
+        } else if (x < screenWidth / 2) {
+            this.direction = 'left';
+        } else {
+            this.direction = 'right';
         }
     }
 
@@ -78,8 +98,17 @@ export class Znek {
     private draw(): void {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        this.snake.forEach(segment => {
+        const hue = (Date.now() / 20) % 360;
+        
+        this.snake.forEach((segment, index) => {
+            this.ctx.save();
+            
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = `hsl(${(hue + index * 25) % 360}, 100%, 50%)`;
+            
             this.ctx.drawImage(this.snakeImg, segment.x, segment.y, 20, 20);
+            
+            this.ctx.restore();
         });
 
         this.ctx.fillStyle = 'red';
