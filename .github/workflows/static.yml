@@ -131,7 +131,7 @@ jobs:
                 --mangle \
                 --source-map "base='assets/js',root='assets/js',url='$(basename "$file").map'" \
                 --output "${file%.js}.min.js"
-              if [ -f "${file%.js}.min.js}"]; then
+              if [ -f "${file%.js}.min.js}" ]; then
                 mv "${file%.js}.min.js" "$file"
                 echo "✅ Successfully minified $file"
               else
