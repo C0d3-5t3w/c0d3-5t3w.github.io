@@ -768,18 +768,18 @@ canvas {
   z-index: 10;
   cursor: pointer;
   box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2);
-  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  border-radius: 50% 50% 40% 40% / 60% 60% 50% 50%;
   transition: width 0.1s ease-out, height 0.1s ease-out, transform 0.1s ease-out;
   
   &:before {
     content: '';
     position: absolute;
-    bottom: 0;
+    bottom: -2px;
     left: 50%;
     width: 8px;
     height: 5px;
     background: rgba(0, 0, 0, 0.2);
-    border-radius: 0 0 50% 50%;
+    border-radius: 50% 50% 0 0;
     transform: translateX(-50%);
   }
   
