@@ -46,7 +46,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             e.preventDefault();
         }, { passive: false });
         
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
             const controls = document.getElementById('controls');
 
             function hideControls() {
@@ -59,13 +59,12 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             document.addEventListener('keydown', hideControls);
             document.addEventListener('touchstart', hideControls);
             
-            const gameScript = document.createElement('script');
-            gameScript.type = 'module';
-            gameScript.src = '../assets/js/Znek.js';
-            gameScript.onload = function() {
-                new window.Znek();
-            };
-            document.body.appendChild(gameScript);
+            try {
+                const gameModule = await import('../assets/js/Znek.js');
+                new gameModule.default();
+            } catch (error) {
+                console.error('Failed to load Znek game:', error);
+            }
         });
     </script>
 </body>

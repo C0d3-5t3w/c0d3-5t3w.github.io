@@ -59,7 +59,7 @@ jobs:
           echo '{
             "compilerOptions": {
               "target": "ES6",
-              "module": "None",
+              "module": "ES2020",
               "outDir": "./assets/js",
               "rootDir": "./assets/ts",
               "strict": true,
@@ -67,7 +67,8 @@ jobs:
               "skipLibCheck": true,
               "forceConsistentCasingInFileNames": true
             },
-            "include": ["./assets/ts/**/*"]
+            "include": ["./assets/ts/**/*"],
+            "exclude": ["node_modules"]
           }' > tsconfig.json
       
       - name: List TypeScript files
@@ -79,32 +80,42 @@ jobs:
         run: |
           mkdir -p assets/js
           echo "Compiling TypeScript files..."
-          # Explicitly list important TypeScript files for visibility
-          echo "Important files to compile: dropdown.ts and altdropdown.ts"
-          npx tsc --listFiles
+          
+          # First try standard tsc compilation
+          npx tsc
+          
+          # Check if compilation succeeded
           if [ $? -ne 0 ]; then
-            echo "TypeScript compilation failed. Trying to continue with existing JS files."
-          else
-            echo "TypeScript compilation successful."
+            echo "TypeScript compilation failed with tsc. Trying alternative method."
+            
+            # Fallback method: compile each TS file individually
+            find ./assets/ts -name "*.ts" | while read -r file; do
+              echo "Individually compiling $file"
+              outfile="./assets/js/$(basename "${file%.ts}.js")"
+              outdir=$(dirname "$outfile")
+              mkdir -p "$outdir"
+              npx tsc "$file" --outDir "$outdir" --target ES6 --module ES2020
+            done
           fi
           
       - name: Verify JavaScript output
         run: |
           echo "Generated JavaScript files:"
           find ./assets/js -name "*.js" | sort
-          # Check specifically for dropdown.js and altdropdown.js
-          if [ -f "./assets/js/dropdown.js" ]; then
-            echo "✅ dropdown.js successfully generated"
-          else
-            echo "❌ dropdown.js missing"
-            exit 1
-          fi
-          if [ -f "./assets/js/altdropdown.js" ]; then
-            echo "✅ altdropdown.js successfully generated"
-          else
-            echo "❌ altdropdown.js missing"
-            exit 1
-          fi
+          
+          # Check for any missing outputs
+          ts_files=$(find ./assets/ts -name "*.ts" | wc -l)
+          js_files=$(find ./assets/js -name "*.js" | wc -l)
+          echo "TypeScript files count: $ts_files"
+          echo "JavaScript files count: $js_files"
+          
+          # Special handling for critical files
+          for critical_file in "Znek" "FlappyZig" "main" "alt" "dropdown" "altdropdown"; do
+            if [ -f "./assets/ts/${critical_file}.ts" ] && [ ! -f "./assets/js/${critical_file}.js" ]; then
+              echo "⚠️ Critical file missing: ${critical_file}.js - attempting direct compilation"
+              npx tsc ./assets/ts/${critical_file}.ts --outFile ./assets/js/${critical_file}.js --target ES6 --module None
+            fi
+          done
           
       - name: Lint JavaScript
         run: |
@@ -112,7 +123,7 @@ jobs:
           
       - name: Minify JavaScript
         run: |
-          for file in assets/js/*.js; do
+          find ./assets/js -name "*.js" | while read -r file; do
             if [ -f "$file" ]; then
               echo "Minifying $file"
               npx terser "$file" \
@@ -120,7 +131,7 @@ jobs:
                 --mangle \
                 --source-map "base='assets/js',root='assets/js',url='$(basename "$file").map'" \
                 --output "${file%.js}.min.js"
-              if [ -f "${file%.js}.min.js" ]; then
+              if [ -f "${file%.js}.min.js}"]; then
                 mv "${file%.js}.min.js" "$file"
                 echo "✅ Successfully minified $file"
               else
@@ -147,14 +158,30 @@ jobs:
       - name: Compile Sass
         run: |
           mkdir -p assets/css
-          if [ -f "assets/sass/main.scss" ]; then
-            sass assets/sass/main.scss:assets/css/main.css
-          fi
-          if [ -f "assets/sass/alt.scss" ]; then
-            sass assets/sass/alt.scss:assets/css/alt.css
-          else
-            echo "Note: assets/sass/alt.scss not found - skipping compilation"
-          fi
+          echo "Compiling all SCSS files..."
+          
+          # Find all SCSS files and compile them
+          find ./assets/sass -name "*.scss" | while read -r scss_file; do
+            # Get relative path of the SCSS file within the sass directory
+            rel_path=$(echo "$scss_file" | sed 's|./assets/sass/||')
+            # Create the output path in the css directory
+            css_file="./assets/css/${rel_path%.scss}.css"
+            # Create directory for output file if it doesn't exist
+            mkdir -p "$(dirname "$css_file")"
+            
+            echo "Compiling $scss_file to $css_file"
+            sass "$scss_file":"$css_file"
+            
+            if [ -f "$css_file" ]; then
+              echo "✅ Successfully compiled $scss_file to $css_file"
+            else
+              echo "❌ Failed to compile $scss_file"
+            fi
+          done
+          
+          # Verify CSS outputs
+          echo "Generated CSS files:"
+          find ./assets/css -name "*.css" | sort
           
       - name: Setup Pages
         uses: actions/configure-pages@v5

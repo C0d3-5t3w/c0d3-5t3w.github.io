@@ -45,9 +45,9 @@ class SiteMapDropdown {
             { text: '📷 Pictures', url: 'pages/pictures.html' },
             { text: '🍲 Recipes', url: 'pages/recipes.html' },
             { text: '💡 Advice', url: 'pages/advice.html' },
-            { text: '🎮 FlappyZig', url: 'pages/FlappyZig.html' },
             { text: '✨ Particles', url: 'pages/particles.html' },
             { text: '🔗 Links', url: 'pages/links.html' },
+            { text: '🎮 FlappyZig', url: 'pages/FlappyZig.html' },
             { text: '🐍 Znek', url: 'pages/znek.html' }
         ];
 

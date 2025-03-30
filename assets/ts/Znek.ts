@@ -1,4 +1,4 @@
-export default class Znek {
+class Znek {
     private canvas: HTMLCanvasElement;
     private ctx: CanvasRenderingContext2D;
     private snake: { x: number, y: number }[];
@@ -114,6 +114,8 @@ export default class Znek {
     }
 }
 
-(window as any).Znek = Znek;
+if (typeof window !== 'undefined') {
+    (window as any).Znek = Znek;
+}
 
-// <3
+export default Znek;
