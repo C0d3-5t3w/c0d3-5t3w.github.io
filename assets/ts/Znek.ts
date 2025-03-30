@@ -23,7 +23,7 @@ export default class Znek {
     private init(): void {
         document.addEventListener('keydown', this.handleKeyPress.bind(this));
         document.addEventListener('touchstart', this.handleTouch.bind(this));
-        this.gameLoop = setInterval(this.update.bind(this), 100);
+        this.gameLoop = window.setInterval(this.update.bind(this), 100);
     }
 
     private generateFood(): { x: number, y: number } {
@@ -45,10 +45,10 @@ export default class Znek {
     private handleTouch(e: TouchEvent): void {
         e.preventDefault();
         const touch = e.touches[0];
-        const screenWidth = window.innerWidth;
         const screenHeight = window.innerHeight;
-        const x = touch.clientX;
+        const screenWidth = window.innerWidth;
         const y = touch.clientY;
+        const x = touch.clientX;
 
         if (y < screenHeight / 3) {
             this.direction = 'up';
@@ -98,16 +98,10 @@ export default class Znek {
     private draw(): void {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         
-        const hue = (Date.now() / 20) % 360;
-        
-        this.snake.forEach((segment, index) => {
+        this.snake.forEach((segment) => {
             this.ctx.save();
-            
-            this.ctx.shadowBlur = 15;
-            this.ctx.shadowColor = `hsl(${(hue + index * 25) % 360}, 100%, 50%)`;
-            
-            this.ctx.drawImage(this.snakeImg, segment.x, segment.y, 20, 20);
-            
+            this.ctx.fillStyle = '#00ff00';
+            this.ctx.fillRect(segment.x, segment.y, 18, 18);
             this.ctx.restore();
         });
 
