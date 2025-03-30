@@ -61,12 +61,47 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             z-index: 1000;
             border: 1px solid var(--primary-color);
         }
+        .particle-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--accent-teal);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            color: var(--primary-color);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            min-width: 250px;
+            max-width: 300px;
+            transform-origin: bottom left;
+            transform: scale(0.9);
+        }
+        
+        .particle-controls.collapsed {
+            transform: translateY(calc(100% - 40px)) scale(0.9);
+        }
+        
+        .controls-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
     </style>
 </head>
 <body>
     <div id="particle-stats" class="terminal-text">Particles: <span id="particle-count">0</span></div>
     
-    <div class="particle-controls">
+    <div class="particle-controls collapsed" id="particle-controls">
+        <button class="controls-toggle" id="controls-toggle">▲</button>
         <h3>Particle Controls</h3>
         <div class="control-item">
             <label for="particle-size">Size:</label>
@@ -77,6 +112,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <input type="range" id="particle-speed" min="1" max="10" value="5">
         </div>
         <button id="add-particles" class="pulse-button">Add More Particles</button>
+        <p class="info-tip">Tip: Click on particles to make them explode!</p>
     </div>
     
     <div id="particle-container">
@@ -115,8 +151,16 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             const sizeSlider = document.getElementById('particle-size');
             const speedSlider = document.getElementById('particle-speed');
             const addButton = document.getElementById('add-particles');
+            const controlsToggle = document.getElementById('controls-toggle');
+            const particleControls = document.getElementById('particle-controls');
             
             let particleSpeed = 5;
+            
+            // Controls toggle functionality
+            controlsToggle.addEventListener('click', function() {
+                particleControls.classList.toggle('collapsed');
+                this.textContent = particleControls.classList.contains('collapsed') ? '▲' : '▼';
+            });
             
             sizeSlider.addEventListener('change', function() {
                 const newSize = this.value;

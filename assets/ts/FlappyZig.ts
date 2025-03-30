@@ -92,7 +92,7 @@ const CONSTANTS: GameConstants = {
     DEATH_PAUSE: 60,
     BASE_BULLET_SIZE: 45,
     BASE_ENEMY_SIZE: 35,
-    BASE_ENEMY_SPEED: 5,
+    BASE_ENEMY_SPEED: 6,
     BASE_ENEMY_SPAWN_INTERVAL: 300,
     BASE_ENEMY_BOB_AMPLITUDE: 100,
     ENEMY_BOB_SPEED: 0.1,
@@ -404,7 +404,7 @@ class Game {
         CONSTANTS.IS_MOBILE = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
             || (window.innerWidth <= 768);
         
-        const targetAspectRatio = 9 / 16; 
+        const targetAspectRatio = CONSTANTS.IS_MOBILE ? 3 / 4 : 9 / 16; 
         let width, height;
         
         const screenWidth = window.innerWidth;
@@ -431,6 +431,10 @@ class Game {
         
         const referenceWidth = CONSTANTS.IS_MOBILE ? CONSTANTS.MOBILE_REF_WIDTH : CONSTANTS.DESKTOP_REF_WIDTH;
         let scaleFactor = width / referenceWidth;
+        
+        if (CONSTANTS.IS_MOBILE) {
+            scaleFactor *= 1.2;
+        }
         
         scaleFactor = Math.max(scaleFactor, CONSTANTS.IS_MOBILE ? 0.7 : CONSTANTS.MIN_SCALE_FACTOR);
         CONSTANTS.SCALE_FACTOR = scaleFactor;

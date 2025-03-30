@@ -61,8 +61,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         
         .balloon-controls {
             position: fixed;
-            top: 20px;
-            right: 20px;
+            bottom: 20px;
+            left: 20px;
             background: rgba(0, 0, 0, 0.7);
             border: 1px solid var(--accent-teal);
             border-radius: 8px;
@@ -70,6 +70,69 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             z-index: 100;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
             color: var(--primary-color);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            min-width: 250px;
+            max-width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform-origin: bottom left;
+            transform: scale(0.9);
+        }
+        
+        .balloon-controls.collapsed {
+            transform: translateY(calc(100% - 40px)) scale(0.9);
+        }
+        
+        .controls-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        
+        .gravity-pointer {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(3, 189, 171, 0.8) 0%, rgba(3, 189, 171, 0.2) 70%);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px var(--accent-teal);
+            z-index: 99;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .gravity-pointer.active {
+            opacity: 1;
+        }
+        
+        .gravity-slider-container {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .gravity-active-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+            background-color: #555;
+            transition: background-color 0.3s ease;
+        }
+        
+        .gravity-active-indicator.active {
+            background-color: var(--accent-teal);
+            box-shadow: 0 0 5px var(--accent-teal);
         }
         
         .balloon-controls h3 {
@@ -111,7 +174,10 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     </style>
 </head>
 <body>
-    <div class="balloon-controls">
+    <div class="gravity-pointer" id="gravity-pointer"></div>
+    
+    <div class="balloon-controls collapsed" id="balloon-controls">
+        <button class="controls-toggle" id="controls-toggle">▲</button>
         <h3>Balloon Controls</h3>
         <div class="control-item">
             <label for="balloon-size">Size:</label>
@@ -130,7 +196,17 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <input type="range" id="string-length" min="50" max="200" value="100">
         </div>
         <button id="add-balloons" class="pulse-button">Add More Balloons</button>
-        <button id="gravitate-to-cursor" class="pulse-button" style="margin-top: 10px; background-color: var(--accent-orange);">Enable Gravity Attraction</button>
+        
+        <div class="gravity-slider-container">
+            <div class="control-item">
+                <label for="gravity-strength">
+                    <span class="gravity-active-indicator" id="gravity-indicator"></span>
+                    Gravity Strength:
+                </label>
+                <input type="range" id="gravity-strength" min="0" max="10" value="0">
+            </div>
+        </div>
+        
         <p class="info-tip">Tip: Double tap balloons on mobile to pop them!</p>
     </div>
     

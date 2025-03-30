@@ -419,14 +419,18 @@ document.addEventListener("DOMContentLoaded", () => {
         wobbleSlider: HTMLInputElement;
         stringLengthSlider: HTMLInputElement;
         addButton: HTMLButtonElement;
-        gravitateButton: HTMLButtonElement;
+        gravityStrengthSlider: HTMLInputElement;
         gravitationEnabled: boolean = false;
         mouseX: number = 0;
         mouseY: number = 0;
-        gravityStrength: number = 0.05;
+        gravityStrength: number = 0;
         globalWindForce: number = 0;
         globalWindTarget: number = 0;
         nextWindChange: number = 0;
+        gravityPointer: HTMLElement;
+        gravityIndicator: HTMLElement;
+        controlsToggle: HTMLElement;
+        controlsPanel: HTMLElement;
         
         constructor() {
             this.sizeSlider = document.getElementById('balloon-size') as HTMLInputElement;
@@ -434,7 +438,11 @@ document.addEventListener("DOMContentLoaded", () => {
             this.wobbleSlider = document.getElementById('balloon-wobble') as HTMLInputElement;
             this.stringLengthSlider = document.getElementById('string-length') as HTMLInputElement;
             this.addButton = document.getElementById('add-balloons') as HTMLButtonElement;
-            this.gravitateButton = document.getElementById('gravitate-to-cursor') as HTMLButtonElement;
+            this.gravityStrengthSlider = document.getElementById('gravity-strength') as HTMLInputElement;
+            this.gravityPointer = document.getElementById('gravity-pointer') as HTMLElement;
+            this.gravityIndicator = document.getElementById('gravity-indicator') as HTMLElement;
+            this.controlsToggle = document.getElementById('controls-toggle') as HTMLElement;
+            this.controlsPanel = document.getElementById('balloon-controls') as HTMLElement;
             
             this.initExistingBalloons();
             this.setupEventListeners();
@@ -475,27 +483,49 @@ document.addEventListener("DOMContentLoaded", () => {
                 this.addBalloons(5);
             });
             
-            this.gravitateButton.addEventListener('click', () => {
-                this.gravitationEnabled = !this.gravitationEnabled;
-                this.gravitateButton.textContent = this.gravitationEnabled ? 
-                    'Disable Gravity Attraction' : 'Enable Gravity Attraction';
+            this.gravityStrengthSlider.addEventListener('input', () => {
+                const value = parseInt(this.gravityStrengthSlider.value);
+                this.gravityStrength = value * 0.01;
                 
-                if (this.gravitationEnabled) {
-                    this.gravitateButton.style.background = 'var(--accent-purple)';
+                if (value > 0) {
+                    this.gravitationEnabled = true;
+                    this.gravityPointer.classList.add('active');
+                    this.gravityIndicator.classList.add('active');
                 } else {
-                    this.gravitateButton.style.background = 'var(--accent-orange)';
+                    this.gravitationEnabled = false;
+                    this.gravityPointer.classList.remove('active');
+                    this.gravityIndicator.classList.remove('active');
                 }
+                
+                const pointerSize = 20 + (value * 2);
+                this.gravityPointer.style.width = `${pointerSize}px`;
+                this.gravityPointer.style.height = `${pointerSize}px`;
+            });
+            
+            this.controlsToggle.addEventListener('click', () => {
+                this.controlsPanel.classList.toggle('collapsed');
+                this.controlsToggle.textContent = this.controlsPanel.classList.contains('collapsed') ? '▲' : '▼';
             });
             
             document.addEventListener('mousemove', (e) => {
                 this.mouseX = e.clientX;
                 this.mouseY = e.clientY;
+                
+                if (this.gravitationEnabled) {
+                    this.gravityPointer.style.left = `${this.mouseX}px`;
+                    this.gravityPointer.style.top = `${this.mouseY}px`;
+                }
             });
             
             document.addEventListener('touchmove', (e) => {
                 if (e.touches.length > 0) {
                     this.mouseX = e.touches[0].clientX;
                     this.mouseY = e.touches[0].clientY;
+                    
+                    if (this.gravitationEnabled) {
+                        this.gravityPointer.style.left = `${this.mouseX}px`;
+                        this.gravityPointer.style.top = `${this.mouseY}px`;
+                    }
                 }
             });
             
@@ -507,7 +537,7 @@ document.addEventListener("DOMContentLoaded", () => {
         
         startGravityLoop(): void {
             setInterval(() => {
-                if (this.gravitationEnabled) {
+                if (this.gravitationEnabled && this.gravityStrength > 0) {
                     this.balloons.forEach(balloon => {
                         balloon.applyGravityAttraction(this.mouseX, this.mouseY, this.gravityStrength);
                     });

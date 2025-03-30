@@ -27,6 +27,12 @@ interface GameConstants {
     HIGH_SCORE_FONT: string;
     HIGH_SCORE_Y_START: number;
     HIGH_SCORE_Y_SPACING: number;
+    DPAD_SIZE: number;
+    DPAD_MARGIN: number;
+    DPAD_BUTTON_SIZE: number;
+    RESTART_BUTTON_WIDTH: number;
+    RESTART_BUTTON_HEIGHT: number;
+    RESTART_BUTTON_MARGIN: number;
 }
 
 interface SnakeSegment {
@@ -41,14 +47,6 @@ interface Food {
 
 interface SpecialFood extends Food {
     timeLeft: number;
-}
-
-interface DPadFeedback {
-    x: number;
-    y: number;
-    direction: Direction;
-    opacity: number;
-    timestamp: number;
 }
 
 const CONSTANTS: GameConstants = {
@@ -79,7 +77,13 @@ const CONSTANTS: GameConstants = {
     GAME_OVER_FONT: '24px Arial',
     HIGH_SCORE_FONT: '18px Arial',
     HIGH_SCORE_Y_START: 120,
-    HIGH_SCORE_Y_SPACING: 30
+    HIGH_SCORE_Y_SPACING: 30,
+    DPAD_SIZE: 150,
+    DPAD_MARGIN: 20,
+    DPAD_BUTTON_SIZE: 40,
+    RESTART_BUTTON_WIDTH: 120,
+    RESTART_BUTTON_HEIGHT: 40,
+    RESTART_BUTTON_MARGIN: 20
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -101,8 +105,11 @@ class Znek {
     private deathTimer: number;
     private canReset: boolean;
     private handleKeyPressMethod: (e: KeyboardEvent) => void;
-    private dPadFeedbacks: DPadFeedback[];
     private gameStarted: boolean;
+    private dpadElement: HTMLElement | null;
+    private restartButtonElement: HTMLElement | null;
+    private canvasContainer: HTMLElement | null;
+    private resizeTimeout: number | null;
     
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -120,12 +127,17 @@ class Znek {
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
-        this.dPadFeedbacks = [];
         this.gameStarted = false;
+        this.dpadElement = document.getElementById('znekDPad');
+        this.restartButtonElement = document.getElementById('znekRestartButton');
+        this.canvasContainer = document.getElementById('znekContainer');
+        this.resizeTimeout = null;
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
         
         this.init();
+        this.setupResponsiveLayout();
+        window.addEventListener('resize', this.handleResize.bind(this));
     }
 
     private init(): void {
@@ -138,6 +150,80 @@ class Znek {
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
+    }
+
+    private setupResponsiveLayout(): void {
+        this.updateLayout();
+        
+        if (!this.restartButtonElement && this.canvasContainer) {
+            this.restartButtonElement = document.createElement('button');
+            this.restartButtonElement.id = 'znekRestartButton';
+            this.restartButtonElement.textContent = 'Restart Game';
+            this.restartButtonElement.style.position = 'absolute';
+            this.restartButtonElement.style.display = 'none';
+            this.restartButtonElement.addEventListener('click', () => this.reset());
+            this.canvasContainer.appendChild(this.restartButtonElement);
+        }
+    }
+    
+    private updateLayout(): void {
+        if (!this.canvas || !this.dpadElement) return;
+        
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+        const canvasRect = this.canvas.getBoundingClientRect();
+        
+        const dpadSize = Math.min(
+            CONSTANTS.DPAD_SIZE,
+            (windowWidth - canvasRect.width) / 2 - CONSTANTS.DPAD_MARGIN * 2
+        );
+        
+        if (this.dpadElement) {
+            const isPortrait = windowHeight > windowWidth;
+            
+            if (isPortrait) {
+                this.dpadElement.style.top = `${canvasRect.bottom + CONSTANTS.DPAD_MARGIN}px`;
+                this.dpadElement.style.left = `${(windowWidth - dpadSize) / 2}px`;
+            } else {
+                this.dpadElement.style.left = `${canvasRect.right + CONSTANTS.DPAD_MARGIN}px`;
+                this.dpadElement.style.top = `${(windowHeight - dpadSize) / 2}px`;
+            }
+            
+            this.dpadElement.style.width = `${dpadSize}px`;
+            this.dpadElement.style.height = `${dpadSize}px`;
+            
+            const buttons = this.dpadElement.querySelectorAll('.d-pad-button');
+            const buttonSize = Math.max(dpadSize / 3, CONSTANTS.DPAD_BUTTON_SIZE);
+            buttons.forEach(button => {
+                (button as HTMLElement).style.width = `${buttonSize}px`;
+                (button as HTMLElement).style.height = `${buttonSize}px`;
+            });
+        }
+        
+        if (this.restartButtonElement) {
+            const buttonWidth = Math.min(
+                CONSTANTS.RESTART_BUTTON_WIDTH,
+                canvasRect.width - CONSTANTS.RESTART_BUTTON_MARGIN * 2
+            );
+            
+            this.restartButtonElement.style.width = `${buttonWidth}px`;
+            this.restartButtonElement.style.height = `${CONSTANTS.RESTART_BUTTON_HEIGHT}px`;
+            this.restartButtonElement.style.left = `${(canvasRect.width - buttonWidth) / 2 + canvasRect.left}px`;
+            this.restartButtonElement.style.top = `${canvasRect.bottom + CONSTANTS.RESTART_BUTTON_MARGIN}px`;
+            
+            this.restartButtonElement.style.display = this.gameOver && this.canReset ? 'block' : 'none';
+        }
+    }
+    
+    private handleResize(): void {
+        if (this.resizeTimeout) {
+            window.clearTimeout(this.resizeTimeout);
+        }
+        
+        this.resizeTimeout = window.setTimeout(() => {
+            this.updateLayout();
+            this.resizeTimeout = null;
+        }, 250);
     }
 
     public reset(): void {
@@ -163,6 +249,10 @@ class Znek {
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
+        
+        if (this.restartButtonElement) {
+            this.restartButtonElement.style.display = 'none';
+        }
     }
 
     private loadHighScores(): number[] {
@@ -280,19 +370,6 @@ class Znek {
             return;
         }
 
-        const dPadButtonElement = document.querySelector(`.d-pad-${direction}`);
-        const buttonRect = dPadButtonElement?.getBoundingClientRect();
-        
-        if (buttonRect) {
-            this.dPadFeedbacks.push({
-                x: buttonRect.left + buttonRect.width/2,
-                y: buttonRect.top + buttonRect.height/2,
-                direction: direction,
-                opacity: 1.0,
-                timestamp: Date.now()
-            });
-        }
-        
         switch(direction) {
             case 'up': 
                 if (this.direction !== 'down') {
@@ -320,67 +397,20 @@ class Znek {
                 break;
         }
     }
-    
-    private updateDPadFeedbacks(): void {
-        const now = Date.now();
-        const fadeTime = 500; 
-        
-        this.dPadFeedbacks = this.dPadFeedbacks.filter(feedback => {
-            const elapsed = now - feedback.timestamp;
-            feedback.opacity = Math.max(0, 1 - elapsed / fadeTime);
-            return feedback.opacity > 0;
-        });
-    }
-    
-    private renderDPadFeedbacks(): void {
-        this.ctx.save();
-        
-        this.dPadFeedbacks.forEach(feedback => {
-            const radius = 30;
-            const gradient = this.ctx.createRadialGradient(
-                feedback.x, feedback.y, 0,
-                feedback.x, feedback.y, radius
-            );
-            
-            let color = 'white';
-            switch(feedback.direction) {
-                case 'up':
-                    color = '#4CAF50';
-                    break;
-                case 'down':
-                    color = '#F44336';
-                    break;
-                case 'left':
-                    color = '#2196F3';
-                    break;
-                case 'right':
-                    color = '#FF9800';
-                    break;
-            }
-            
-            gradient.addColorStop(0, `rgba(255, 255, 255, ${feedback.opacity * 0.7})`);
-            gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
-            
-            this.ctx.fillStyle = gradient;
-            this.ctx.beginPath();
-            this.ctx.arc(feedback.x, feedback.y, radius, 0, Math.PI * 2);
-            this.ctx.fill();
-        });
-        
-        this.ctx.restore();
-    }
 
     private update(): void {
         if (this.gameOver) {
             this.deathTimer++;
             if (this.deathTimer >= CONSTANTS.DEATH_PAUSE) {
                 this.canReset = true;
+                
+                if (this.restartButtonElement) {
+                    this.restartButtonElement.style.display = 'block';
+                }
             }
             return;
         }
 
-        this.updateDPadFeedbacks();
-        
         if (this.gameStarted) {
             const head = { ...this.snake[0] };
 
@@ -460,8 +490,6 @@ class Znek {
             
             this.backgroundImg.onload = () => this.draw();
         }
-        
-        this.renderDPadFeedbacks();
         
         for (let i = this.snake.length - 1; i > 0; i--) {
             const segment = this.snake[i];
