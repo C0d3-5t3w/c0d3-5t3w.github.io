@@ -219,6 +219,21 @@ $random_quote = $quotes[array_rand($quotes)];
                 font-weight: bold;
                 margin-bottom: 10px;
             }
+            #new-quote-btn {
+                margin-top: 15px;
+                padding: 10px 20px;
+                background-color: var(--accent-orange);
+                color: var(--primary-color);
+                border: 1px solid var(--primary-color);
+                border-radius: 5px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+            }
+            #new-quote-btn:hover {
+                background-color: #ff0000;
+                transform: translateY(-2px);
+                box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            }
         </style>
     </head>
     <body>
@@ -299,9 +314,32 @@ $random_quote = $quotes[array_rand($quotes)];
                 <div id="quote-text">
                     <h3><p id="quote-content"><?php echo $random_quote; ?></p></h3>
                 </div>
+                <button id="new-quote-btn" class="pulse-button">Generate New Quote</button>
             </div>
         </div>
         <script src="assets/js/main.js"></script>
         <script src="assets/js/dropdown.js"></script>
+        <script>
+            const allQuotes = <?php echo json_encode($quotes); ?>;
+            
+            function getRandomQuote() {
+                const randomIndex = Math.floor(Math.random() * allQuotes.length);
+                return allQuotes[randomIndex];
+            }
+            
+            function updateQuote() {
+                const quoteElement = document.getElementById('quote-content');
+                const quoteContainer = document.getElementById('quote-text');
+                
+                quoteContainer.style.opacity = '0.3';
+                
+                setTimeout(function() {
+                    quoteElement.textContent = getRandomQuote();
+                    quoteContainer.style.opacity = '1';
+                }, 300);
+            }
+            
+            document.getElementById('new-quote-btn').addEventListener('click', updateQuote);
+        </script>
     </body>
 </html>

@@ -12,7 +12,17 @@ $coding_advice = [
     "Follow coding standards and best practices.",
     "Use meaningful variable and function names.",
     "Refactor code regularly to improve its structure.",
-    "Participate in code reviews to learn and share knowledge."
+    "Participate in code reviews to learn and share knowledge.",
+    "Break down complex problems into smaller, manageable tasks.",
+    "Optimize your code only when necessary.",
+    "Document your code and APIs thoroughly.",
+    "Use design patterns to solve common problems.",
+    "Handle errors and exceptions gracefully.",
+    "Stay updated with security best practices.",
+    "Learn to use keyboard shortcuts in your IDE.",
+    "Practice pair programming to improve collaboration.",
+    "Understand Big O notation for algorithm efficiency.",
+    "Backup your work regularly to prevent data loss."
 ];
 $cooking_advice = [
     "Always taste your food as you cook.",
@@ -24,7 +34,17 @@ $cooking_advice = [
     "Preheat your oven for consistent results.",
     "Use a meat thermometer to ensure proper cooking.",
     "Let meat rest before slicing to retain juices.",
-    "Organize your ingredients before cooking."
+    "Organize your ingredients before cooking.",
+    "Invest in quality cookware for better results.",
+    "Learn basic knife skills to improve efficiency.",
+    "Season at every step of the cooking process.",
+    "Don't overcrowd the pan when sautéing.",
+    "Use the right cutting board for different foods.",
+    "Save vegetable scraps for homemade stock.",
+    "Balance flavors: sweet, salty, sour, bitter, and umami.",
+    "Understand different cooking methods: roasting, braising, sautéing.",
+    "Don't be afraid to adjust recipes to your taste.",
+    "Learn to properly store different ingredients."
 ];
 $dubstep_advice = [
     "Experiment with different software and plugins.",
@@ -36,7 +56,17 @@ $dubstep_advice = [
     "Use sidechain compression for that pumping effect.",
     "Experiment with different tempos and rhythms.",
     "Add variations to keep your tracks interesting.",
-    "Collaborate with other artists to learn new techniques."
+    "Collaborate with other artists to learn new techniques.",
+    "Master EQ techniques to shape your sounds.",
+    "Use reference tracks to benchmark your mixes.",
+    "Learn how to properly mix and master your tracks.",
+    "Pay attention to stereo imaging and space in your mix.",
+    "Experiment with modulation effects for moving textures.",
+    "Develop your own unique sound signature.",
+    "Create contrast between different sections of your track.",
+    "Use foley sounds for unique percussion elements.",
+    "Don't overcompress your mix - maintain dynamics.",
+    "Understand music theory to create more compelling melodies."
 ];
 ?>
 <!DOCTYPE html>
