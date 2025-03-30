@@ -312,7 +312,7 @@ $random_quote = $quotes[array_rand($quotes)];
             <div class="quote-of-the-day">
                 <h1>Random quote:</h1>
                 <div id="quote-text">
-                    <h3><p id="quote-content"><?php echo $random_quote; ?></p></h3>
+                    <h2><p id="quote-content"><?php echo $random_quote; ?></p></h2>
                 </div>
                 <button id="new-quote-btn" class="pulse-button">Generate New Quote</button>
             </div>
