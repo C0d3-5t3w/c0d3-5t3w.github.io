@@ -63,7 +63,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             border: 1px solid var(--accent-teal);
             border-radius: 8px;
             padding: 15px;
@@ -177,7 +177,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <div class="gravity-pointer" id="gravity-pointer"></div>
     
     <div class="balloon-controls collapsed" id="balloon-controls">
-        <button class="controls-toggle" id="controls-toggle">▲</button>
+        <button class="controls-toggle" id="controls-toggle">▼</button>
         <h3>Balloon Controls</h3>
         <div class="control-item">
             <label for="balloon-size">Size:</label>

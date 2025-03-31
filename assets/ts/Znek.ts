@@ -33,6 +33,15 @@ interface GameConstants {
     RESTART_BUTTON_WIDTH: number;
     RESTART_BUTTON_HEIGHT: number;
     RESTART_BUTTON_MARGIN: number;
+    STAR_FOOD_SIZE: number;
+    STAR_FOOD_COLOR: string;
+    STAR_FOOD_POINTS: number;
+    STAR_FOOD_DURATION: number;
+    STAR_FOOD_MIN_INTERVAL: number;
+    STAR_FOOD_MAX_INTERVAL: number;
+    TIMER_HEIGHT: number;
+    TIMER_MARGIN: number;
+    TIMER_RADIUS: number;
 }
 
 interface SnakeSegment {
@@ -49,6 +58,10 @@ interface SpecialFood extends Food {
     timeLeft: number;
 }
 
+interface StarFood extends Food {
+    timeLeft: number;
+}
+
 const CONSTANTS: GameConstants = {
     GRID_SIZE: 10, 
     SNAKE_HEAD_SIZE: 40, 
@@ -62,8 +75,8 @@ const CONSTANTS: GameConstants = {
     SPECIAL_FOOD_POINTS: 5,
     REGULAR_FOOD_POINTS: 1,
     CANVAS_BACKGROUND: 'black',
-    FOOD_COLOR: '#ff3333',
-    SPECIAL_FOOD_COLOR: '#8800ff',
+    FOOD_COLOR: '#00ffff', 
+    SPECIAL_FOOD_COLOR: '#ff00ff',
     SNAKE_BODY_BASE_HUE: 25,
     SNAKE_BODY_SATURATION: 100,
     SNAKE_BODY_LIGHTNESS: 50,
@@ -83,7 +96,16 @@ const CONSTANTS: GameConstants = {
     DPAD_BUTTON_SIZE: 40,
     RESTART_BUTTON_WIDTH: 120,
     RESTART_BUTTON_HEIGHT: 40,
-    RESTART_BUTTON_MARGIN: 20
+    RESTART_BUTTON_MARGIN: 20,
+    STAR_FOOD_SIZE: 35,
+    STAR_FOOD_COLOR: '#ffff00', 
+    STAR_FOOD_POINTS: 3,
+    STAR_FOOD_DURATION: 10000, 
+    STAR_FOOD_MIN_INTERVAL: 20000,
+    STAR_FOOD_MAX_INTERVAL: 40000,
+    TIMER_HEIGHT: 5,
+    TIMER_MARGIN: 10,
+    TIMER_RADIUS: 2,
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -100,6 +122,10 @@ class Znek {
     private score: number;
     private specialFood: SpecialFood | null;
     private specialFoodTimeout?: number;
+    private starFood: StarFood | null;
+    private starFoodTimeout?: number;
+    private tailEatingPower: boolean;
+    private tailEatingTimeLeft: number;
     private highScores: number[];
     private gameOver: boolean;
     private deathTimer: number;
@@ -123,6 +149,9 @@ class Znek {
         this.backgroundImg = new Image();
         this.backgroundImg.src = '../assets/images/gr1.png';
         this.specialFood = null;
+        this.starFood = null;
+        this.tailEatingPower = false;
+        this.tailEatingTimeLeft = 0;
         this.highScores = this.loadHighScores();
         this.gameOver = false;
         this.deathTimer = 0;
@@ -150,6 +179,7 @@ class Znek {
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
+        this.scheduleStarFood();
     }
 
     private setupResponsiveLayout(): void {
@@ -237,11 +267,19 @@ class Znek {
             this.specialFoodTimeout = undefined;
         }
         
+        if (this.starFoodTimeout) {
+            clearTimeout(this.starFoodTimeout);
+            this.starFoodTimeout = undefined;
+        }
+        
         this.snake = [{ x: 10, y: 10 }];
         this.food = this.generateFood();
         this.direction = 'right';
         this.score = 0;
         this.specialFood = null;
+        this.starFood = null;
+        this.tailEatingPower = false;
+        this.tailEatingTimeLeft = 0;
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
@@ -249,6 +287,7 @@ class Znek {
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
+        this.scheduleStarFood();
         
         if (this.restartButtonElement) {
             this.restartButtonElement.style.display = 'none';
@@ -329,6 +368,47 @@ class Znek {
         }, randomTime);
     }
 
+    private scheduleStarFood(): void {
+        const randomTime = Math.floor(Math.random() * 
+            (CONSTANTS.STAR_FOOD_MAX_INTERVAL - CONSTANTS.STAR_FOOD_MIN_INTERVAL)) + 
+            CONSTANTS.STAR_FOOD_MIN_INTERVAL;
+
+        this.starFoodTimeout = window.setTimeout(() => {
+            let newStarFood: Food;
+            let onSnakeOrFood: boolean;
+            let attempts = 0;
+            const maxAttempts = 100;
+
+            do {
+                newStarFood = {
+                    x: Math.floor(Math.random() * (this.canvas.width / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE,
+                    y: Math.floor(Math.random() * (this.canvas.height / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE
+                };
+
+                onSnakeOrFood = this.snake.some(segment => 
+                    segment.x === newStarFood.x && segment.y === newStarFood.y) || 
+                    (this.food.x === newStarFood.x && this.food.y === newStarFood.y) ||
+                    (this.specialFood && this.specialFood.x === newStarFood.x && this.specialFood.y === newStarFood.y);
+
+                attempts++;
+                if (attempts >= maxAttempts) {
+                    this.scheduleStarFood();
+                    return;
+                }
+            } while (onSnakeOrFood);
+
+            this.starFood = {
+                ...newStarFood,
+                timeLeft: CONSTANTS.STAR_FOOD_DURATION
+            };
+
+            window.setTimeout(() => {
+                this.starFood = null;
+                this.scheduleStarFood();
+            }, CONSTANTS.STAR_FOOD_DURATION);
+        }, randomTime);
+    }
+
     private handleKeyPress(e: KeyboardEvent): void {
         if (this.gameOver && this.canReset) {
             e.preventDefault();
@@ -403,7 +483,9 @@ class Znek {
             this.deathTimer++;
             if (this.deathTimer >= CONSTANTS.DEATH_PAUSE) {
                 this.canReset = true;
-                
+                if (this.deathTimer === CONSTANTS.DEATH_PAUSE) {
+                    this.saveHighScore(this.score);
+                }
                 if (this.restartButtonElement) {
                     this.restartButtonElement.style.display = 'block';
                 }
@@ -424,6 +506,7 @@ class Znek {
             if (this.checkCollision(head)) {
                 if (this.gameLoop) clearInterval(this.gameLoop);
                 if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
+                if (this.starFoodTimeout) clearTimeout(this.starFoodTimeout);
                 this.gameOver = true;
                 this.saveHighScore(this.score);
                 return;
@@ -462,8 +545,34 @@ class Znek {
                     this.specialFood = null;
                     this.scheduleSpecialFood();
                 }
+            } else if (this.starFood) {
+                const starFoodCenterX = this.starFood.x + CONSTANTS.STAR_FOOD_SIZE / 2;
+                const starFoodCenterY = this.starFood.y + CONSTANTS.STAR_FOOD_SIZE / 2;
+
+                const headToStarFoodDistance = Math.sqrt(
+                    Math.pow(headCenterX - starFoodCenterX, 2) + 
+                    Math.pow(headCenterY - starFoodCenterY, 2)
+                );
+
+                const starCollisionRadius = (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.STAR_FOOD_SIZE) / 2.5;
+
+                if (headToStarFoodDistance < starCollisionRadius) {
+                    this.score += CONSTANTS.STAR_FOOD_POINTS;
+                    this.tailEatingPower = true;
+                    this.tailEatingTimeLeft = CONSTANTS.STAR_FOOD_DURATION;
+                    this.starFood = null;
+                    this.scheduleStarFood();
+                }
             } else {
                 this.snake.pop();
+            }
+        }
+
+        if (this.tailEatingPower) {
+            this.tailEatingTimeLeft -= CONSTANTS.GAME_SPEED;
+            if (this.tailEatingTimeLeft <= 0) {
+                this.tailEatingPower = false;
+                this.tailEatingTimeLeft = 0;
             }
         }
 
@@ -532,16 +641,13 @@ class Znek {
 
         this.ctx.save();
         this.ctx.fillStyle = CONSTANTS.FOOD_COLOR;
-        this.ctx.shadowColor = 'rgba(255, 0, 0, 0.8)';
+        this.ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
         this.ctx.shadowBlur = 10;
-        this.roundedRect(
-            this.food.x, 
-            this.food.y, 
-            CONSTANTS.FOOD_SIZE, 
-            CONSTANTS.FOOD_SIZE, 
-            6
+        this.drawFish(
+            this.food.x + CONSTANTS.FOOD_SIZE / 2, 
+            this.food.y + CONSTANTS.FOOD_SIZE / 2, 
+            CONSTANTS.FOOD_SIZE
         );
-        this.ctx.fill();
         this.ctx.restore();
         
         if (this.specialFood) {
@@ -550,27 +656,61 @@ class Znek {
             
             this.ctx.save();
             this.ctx.fillStyle = CONSTANTS.SPECIAL_FOOD_COLOR;
-            this.ctx.shadowColor = 'rgba(136, 0, 255, 0.8)';
+            this.ctx.shadowColor = 'rgba(255, 0, 255, 0.8)';
             this.ctx.shadowBlur = 15;
             
-            this.ctx.beginPath();
-            this.ctx.arc(
-                this.specialFood.x + CONSTANTS.SPECIAL_FOOD_SIZE / 2,
-                this.specialFood.y + CONSTANTS.SPECIAL_FOOD_SIZE / 2,
-                actualSize / 2,
-                0,
-                Math.PI * 2
-            );
-            this.ctx.fill();
-            
-            this.ctx.fillStyle = 'white';
-            this.ctx.font = '14px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.fillText(
-                `+${CONSTANTS.SPECIAL_FOOD_POINTS}`, 
+            this.drawFish(
                 this.specialFood.x + CONSTANTS.SPECIAL_FOOD_SIZE / 2, 
-                this.specialFood.y + CONSTANTS.SPECIAL_FOOD_SIZE / 2 + 5
+                this.specialFood.y + CONSTANTS.SPECIAL_FOOD_SIZE / 2, 
+                actualSize
             );
+
+            const timerWidth = CONSTANTS.SPECIAL_FOOD_SIZE * 1.2;
+            const timerX = this.specialFood.x - (timerWidth - CONSTANTS.SPECIAL_FOOD_SIZE) / 2;
+            const timerY = this.specialFood.y - CONSTANTS.TIMER_MARGIN - CONSTANTS.TIMER_HEIGHT;
+            const percentLeft = this.specialFood.timeLeft / CONSTANTS.SPECIAL_FOOD_DURATION;
+
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = CONSTANTS.SPECIAL_FOOD_COLOR;
+            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fill();
+
+            this.ctx.restore();
+        }
+
+        if (this.starFood) {
+            const pulseFactor = 1 + 0.15 * Math.sin(Date.now() / 150);
+            const actualSize = CONSTANTS.STAR_FOOD_SIZE * pulseFactor;
+
+            this.ctx.save();
+            this.ctx.fillStyle = CONSTANTS.STAR_FOOD_COLOR;
+            this.ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
+            this.ctx.shadowBlur = 20;
+
+            this.drawStar(
+                this.starFood.x + CONSTANTS.STAR_FOOD_SIZE / 2, 
+                this.starFood.y + CONSTANTS.STAR_FOOD_SIZE / 2, 
+                5, 
+                actualSize / 2, 
+                actualSize / 4
+            );
+
+            const timerWidth = CONSTANTS.STAR_FOOD_SIZE * 1.2;
+            const timerX = this.starFood.x - (timerWidth - CONSTANTS.STAR_FOOD_SIZE) / 2;
+            const timerY = this.starFood.y - CONSTANTS.TIMER_MARGIN - CONSTANTS.TIMER_HEIGHT;
+            const percentLeft = this.starFood.timeLeft / CONSTANTS.STAR_FOOD_DURATION;
+
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fill();
+
+            this.ctx.fillStyle = CONSTANTS.STAR_FOOD_COLOR;
+            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fill();
+
             this.ctx.restore();
         }
 
@@ -659,6 +799,40 @@ class Znek {
         this.ctx.lineTo(x, y + radius);
         this.ctx.quadraticCurveTo(x, y, x + radius, y);
         this.ctx.closePath();
+    }
+
+    private drawFish(x: number, y: number, size: number): void {
+        this.ctx.beginPath();
+        this.ctx.ellipse(x, y, size / 2, size / 3, 0, 0, Math.PI * 2);
+        this.ctx.moveTo(x - size / 2, y);
+        this.ctx.lineTo(x - size / 1.5, y - size / 4);
+        this.ctx.lineTo(x - size / 1.5, y + size / 4);
+        this.ctx.closePath();
+        this.ctx.fill();
+    }
+
+    private drawStar(cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number): void {
+        let rot = Math.PI / 2 * 3;
+        let x = cx;
+        let y = cy;
+        const step = Math.PI / spikes;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx, cy - outerRadius);
+        for (let i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            this.ctx.lineTo(x, y);
+            rot += step;
+
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            this.ctx.lineTo(x, y);
+            rot += step;
+        }
+        this.ctx.lineTo(cx, cy - outerRadius);
+        this.ctx.closePath();
+        this.ctx.fill();
     }
 }
 

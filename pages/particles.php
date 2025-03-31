@@ -65,7 +65,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.7);
+            background: rgba(0, 0, 0, 0.8);
             border: 1px solid var(--accent-teal);
             border-radius: 8px;
             padding: 15px;
@@ -103,7 +103,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <div id="particle-stats" class="terminal-text">Particles: <span id="particle-count">0</span></div>
     
     <div class="particle-controls collapsed" id="particle-controls">
-        <button class="controls-toggle" id="controls-toggle">▲</button>
+        <button class="controls-toggle" id="controls-toggle">▼</button>
         <h3>Particle Controls</h3>
         <div class="control-item">
             <label for="particle-size">Size:</label>
@@ -142,203 +142,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <div class="content page-content">
     <script src="../assets/js/altdropdown.js"></script>
     </div>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const particles = document.querySelectorAll('.particle');
-            const particleContainer = document.getElementById('particle-container');
-            const particleCountDisplay = document.getElementById('particle-count');
-            const screenWidth = window.innerWidth;
-            const screenHeight = window.innerHeight;
-            
-            const sizeSlider = document.getElementById('particle-size');
-            const speedSlider = document.getElementById('particle-speed');
-            const addButton = document.getElementById('add-particles');
-            const controlsToggle = document.getElementById('controls-toggle');
-            const particleControls = document.getElementById('particle-controls');
-            
-            let particleSpeed = 5;
-            
-            // Controls toggle functionality
-            controlsToggle.addEventListener('click', function() {
-                particleControls.classList.toggle('collapsed');
-                this.textContent = particleControls.classList.contains('collapsed') ? '▲' : '▼';
-            });
-            
-            sizeSlider.addEventListener('change', function() {
-                const newSize = this.value;
-                document.querySelectorAll('.particle').forEach(p => {
-                    p.style.width = `${newSize}px`;
-                    p.style.height = `${newSize}px`;
-                });
-            });
-            
-            speedSlider.addEventListener('change', function() {
-                particleSpeed = this.value;
-            });
-            
-            addButton.addEventListener('click', function() {
-                for (let i = 0; i < 25; i++) {
-                    const size = sizeSlider.value;
-                    const x = Math.random() * 100;
-                    const y = Math.random() * 100;
-                    const hue = Math.random() * 360;
-                    createParticle(size, x, y, hue);
-                }
-            });
-            
-            function updateParticleCount() {
-                particleCountDisplay.textContent = document.querySelectorAll('.particle').length;
-            }
-            updateParticleCount();
-            
-            particles.forEach(particle => {
-                particle.addEventListener('mouseenter', function(e) {
-                    e.stopPropagation();
-                    explodeParticle(this);
-                });
-
-                particle.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    explodeParticle(this);
-                });
-            });
-            
-            function createParticle(size, x, y, hue, angle = null, distance = null) {
-                const particle = document.createElement('div');
-                particle.className = 'particle enhanced';
-                particle.style.width = `${size}px`;
-                particle.style.height = `${size}px`;
-                particle.style.left = `${x}%`;
-                particle.style.top = `${y}%`;
-                particle.style.background = `hsla(${hue}, 70%, 50%, 0.6)`;
-                particle.style.boxShadow = `0 0 15px var(--alt-glow)`;
-                
-                particle.dataset.size = size;
-                particle.dataset.x = x;
-                particle.dataset.y = y;
-                particle.dataset.hue = hue;
-                particle.dataset.angle = angle;
-                particle.dataset.distance = distance;
-                
-                particleContainer.appendChild(particle);
-                
-                particle.addEventListener('mouseenter', function(e) {
-                    e.stopPropagation();
-                    explodeParticle(this);
-                });
-
-                particle.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    explodeParticle(this);
-                });
-                
-                updateParticleCount();
-                moveParticle(particle);
-                return particle;
-            }
-            
-            function explodeParticle(particle) {
-                const size = parseFloat(particle.dataset.size);
-                const x = parseFloat(particle.dataset.x);
-                const y = parseFloat(particle.dataset.y);
-                const hue = parseInt(particle.dataset.hue);
-
-                console.log('Exploding particle:', size, x, y, hue);
-                
-                const flash = document.createElement('div');
-                flash.className = 'flash';
-                flash.style.width = `${size}px`;
-                flash.style.height = `${size}px`;
-                flash.style.left = `${x}%`;
-                flash.style.top = `${y}%`;
-                particleContainer.appendChild(flash);
-                setTimeout(() => flash.remove(), 100);
-
-                if (size < 5) {
-                    particle.remove();
-                    updateParticleCount();
-                    return;
-                }
-                
-                particle.classList.add('exploding');
-                
-                const numChildren = Math.min(Math.floor(size / 2), 5);
-                
-                for (let i = 0; i < numChildren; i++) {
-                    const newSize = Math.max(size / 2, 5); 
-                    const angle = (i / numChildren) * Math.PI * 2; 
-                    const distance = Math.min(screenWidth, screenHeight) / 2;
-                    
-                    const newX = x + (Math.cos(angle) * distance * 0.01);
-                    const newY = y + (Math.sin(angle) * distance * 0.01);
-                    
-                    const newHue = (hue + Math.random() * 60 - 30) % 360;
-                    
-                    createParticle(newSize, newX, newY, newHue, angle, distance);
-                }
-                
-                setTimeout(() => {
-                    particle.remove();
-                    updateParticleCount();
-                }, 500); 
-            }
-
-            function moveParticle(particle) {
-                const angle = parseFloat(particle.dataset.angle);
-                const distance = parseFloat(particle.dataset.distance);
-                let speed = 0.1;
-                const deceleration = speed / (5 * 60); 
-
-                function move() {
-                    if (speed <= 0) return;
-                    
-                    const x = parseFloat(particle.dataset.x);
-                    const y = parseFloat(particle.dataset.y);
-                    const newX = x + Math.cos(angle) * speed;
-                    const newY = y + Math.sin(angle) * speed;
-
-                    particle.style.left = `${newX}%`;
-                    particle.style.top = `${newY}%`;
-
-                    particle.dataset.x = newX;
-                    particle.dataset.y = newY;
-
-                    speed -= deceleration;
-
-                    requestAnimationFrame(move);
-                }
-
-                move();
-            }
-
-            function checkAndRespawnParticles() {
-                const particleCount = document.querySelectorAll('.particle').length;
-                if (particleCount < 50) {
-                    for (let i = 0; i < 10; i++) {
-                        const size = rand(10, 30); 
-                        const x = rand(0, 100);
-                        const y = rand(0, 100);
-                        const hue = rand(0, 360);
-                        createParticle(size, x, y, hue);
-                    }
-                }
-            }
-
-            function rand(min, max) {
-                return Math.floor(Math.random() * (max - min + 1)) + min;
-            }
-
-            setInterval(checkAndRespawnParticles, 3000);
-
-            document.addEventListener('touchstart', function(e) {
-                const touch = e.touches[0];
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                if (element && element.classList.contains('particle')) {
-                    explodeParticle(element);
-                }
-            });
-        });
-    </script>
+    <script src="../assets/js/particles.js"></script>
     <script src="../assets/js/alt.js"></script>
 </body>
 </html>
