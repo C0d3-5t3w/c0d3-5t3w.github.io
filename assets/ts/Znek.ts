@@ -120,7 +120,7 @@ class Znek {
     private backgroundImg: HTMLImageElement;
     private gameLoop?: number;
     private score: number;
-    private specialFood: SpecialFood | null;
+    private specialFood: SpecialFood | boolean;
     private specialFoodTimeout?: number;
     private starFood: StarFood | null;
     private starFoodTimeout?: number;
