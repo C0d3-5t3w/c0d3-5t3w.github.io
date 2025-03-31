@@ -278,7 +278,7 @@ class Znek {
         this.score = 0;
         this.specialFood = null;
         this.starFood = null;
-        this.tailEatingPower = this.tailEatingPower ?? false;
+        this.tailEatingPower = false;
         this.tailEatingTimeLeft = 0;
         this.gameOver = false;
         this.deathTimer = 0;
