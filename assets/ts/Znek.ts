@@ -124,7 +124,7 @@ class Znek {
     private specialFoodTimeout?: number;
     private starFood: StarFood | null;
     private starFoodTimeout?: number;
-    private tailEatingPower: boolean | null; 
+    private tailEatingPower: boolean; 
     private tailEatingTimeLeft: number;
     private highScores: number[];
     private gameOver: boolean;
