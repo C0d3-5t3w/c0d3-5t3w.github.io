@@ -120,11 +120,11 @@ class Znek {
     private backgroundImg: HTMLImageElement;
     private gameLoop?: number;
     private score: number;
-    private specialFood: SpecialFood | boolean;
+    private specialFood: SpecialFood | null; 
     private specialFoodTimeout?: number;
     private starFood: StarFood | null;
     private starFoodTimeout?: number;
-    private tailEatingPower: boolean;
+    private tailEatingPower: boolean | null; 
     private tailEatingTimeLeft: number;
     private highScores: number[];
     private gameOver: boolean;
