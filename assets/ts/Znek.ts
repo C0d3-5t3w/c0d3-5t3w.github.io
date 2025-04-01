@@ -124,7 +124,7 @@ class Znek {
     private specialFoodTimeout?: number;
     private starFood: StarFood | null;
     private starFoodTimeout?: number;
-    private tailEatingPower: boolean; 
+    private hasTailEatingPower: boolean;
     private tailEatingTimeLeft: number;
     private highScores: number[];
     private gameOver: boolean;
@@ -150,7 +150,7 @@ class Znek {
         this.backgroundImg.src = '../assets/images/gr1.png';
         this.specialFood = null;
         this.starFood = null;
-        this.tailEatingPower = false;
+        this.hasTailEatingPower = false; 
         this.tailEatingTimeLeft = 0;
         this.highScores = this.loadHighScores();
         this.gameOver = false;
@@ -278,7 +278,7 @@ class Znek {
         this.score = 0;
         this.specialFood = null;
         this.starFood = null;
-        this.tailEatingPower = false;
+        this.hasTailEatingPower = false;
         this.tailEatingTimeLeft = 0;
         this.gameOver = false;
         this.deathTimer = 0;
@@ -558,7 +558,7 @@ class Znek {
 
                 if (headToStarFoodDistance < starCollisionRadius) {
                     this.score += CONSTANTS.STAR_FOOD_POINTS;
-                    this.tailEatingPower = true;
+                    this.hasTailEatingPower = true; 
                     this.tailEatingTimeLeft = CONSTANTS.STAR_FOOD_DURATION;
                     this.starFood = null;
                     this.scheduleStarFood();
@@ -568,10 +568,10 @@ class Znek {
             }
         }
 
-        if (this.tailEatingPower) {
+        if (this.hasTailEatingPower && this.tailEatingTimeLeft > 0) {
             this.tailEatingTimeLeft -= CONSTANTS.GAME_SPEED;
             if (this.tailEatingTimeLeft <= 0) {
-                this.tailEatingPower = false;
+                this.hasTailEatingPower = false;
                 this.tailEatingTimeLeft = 0;
             }
         }
