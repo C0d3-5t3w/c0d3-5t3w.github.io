@@ -385,10 +385,10 @@ class Znek {
                     y: Math.floor(Math.random() * (this.canvas.height / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE
                 };
 
-                onSnakeOrFood = this.snake.some(segment => 
-                    segment.x === newStarFood.x && segment.y === newStarFood.y) || 
-                    (this.food.x === newStarFood.x && this.food.y === newStarFood.y) ||
-                    (this.specialFood && this.specialFood.x === newStarFood.x && this.specialFood.y === newStarFood.y);
+                // onSnakeOrFood = this.snake.some(segment => 
+                //     segment.x === newStarFood.x && segment.y === newStarFood.y) || 
+                //     (this.food.x === newStarFood.x && this.food.y === newStarFood.y) ||
+                //     (this.specialFood && this.specialFood.x === newStarFood.x && this.specialFood.y === newStarFood.y);
 
                 attempts++;
                 if (attempts >= maxAttempts) {
