@@ -121,7 +121,7 @@ const CONSTANTS: GameConstants = {
     TAIL_EATING_MIN_INTERVAL: 30000,
     TAIL_EATING_MAX_INTERVAL: 60000, 
     GHOST_SIZE: 20,
-    GHOST_COLOR: 'white',
+    GHOST_COLOR: '#ffffff',  
     GHOST_MIN_INTERVAL: 15000, 
     GHOST_MAX_INTERVAL: 40000, 
     GHOST_DURATION: 25000, 
@@ -936,14 +936,44 @@ class Znek {
             this.ctx.save();
             
             this.ctx.fillStyle = CONSTANTS.GHOST_COLOR;
-            this.ctx.shadowColor = 'rgba(100, 100, 255, 0.8)';
-            this.ctx.shadowBlur = 15;
+            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+            this.ctx.shadowBlur = 20;  
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = 0;
             
-            this.drawGhost(
-                ghost.x + CONSTANTS.GHOST_SIZE / 2,
-                ghost.y + CONSTANTS.GHOST_SIZE / 2,
-                CONSTANTS.GHOST_SIZE
-            );
+            const pulseFactor = 1 + 0.15 * Math.sin(Date.now() / 150);  
+            const pulseSize = CONSTANTS.GHOST_SIZE * pulseFactor;
+            const pulseRadius = pulseSize / 2;
+            
+            this.ctx.beginPath();
+            this.ctx.arc(ghost.x + pulseRadius, ghost.y - pulseSize * 0.1, pulseRadius * 0.8, Math.PI, 0, true);
+            
+            const bottom = ghost.y + pulseRadius * 0.5;
+            const step = pulseRadius / 3;
+            
+            this.ctx.lineTo(ghost.x + pulseRadius * 0.8, bottom - step);
+            this.ctx.lineTo(ghost.x + pulseRadius * 0.5, bottom);
+            this.ctx.lineTo(ghost.x + pulseRadius * 0.2, bottom - step);
+            this.ctx.lineTo(ghost.x - pulseRadius * 0.2, bottom);
+            this.ctx.lineTo(ghost.x - pulseRadius * 0.5, bottom - step);
+            this.ctx.lineTo(ghost.x - pulseRadius * 0.8, bottom);
+            
+            this.ctx.closePath();
+            this.ctx.fill();
+            
+            this.ctx.strokeStyle = 'rgba(100, 100, 255, 0.8)';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            
+            this.ctx.shadowBlur = 0; 
+            this.ctx.fillStyle = 'black';
+            this.ctx.beginPath();
+            this.ctx.arc(ghost.x - pulseRadius * 0.3, ghost.y - pulseRadius * 0.2, pulseRadius * 0.15, 0, Math.PI * 2);
+            this.ctx.fill();
+            
+            this.ctx.beginPath();
+            this.ctx.arc(ghost.x + pulseRadius * 0.3, ghost.y - pulseRadius * 0.2, pulseRadius * 0.15, 0, Math.PI * 2);
+            this.ctx.fill();
             
             const timerWidth = CONSTANTS.GHOST_SIZE * 1.2;
             const timerX = ghost.x - (timerWidth - CONSTANTS.GHOST_SIZE) / 2;
@@ -1113,30 +1143,43 @@ class Znek {
 
     private drawGhost(x: number, y: number, size: number): void {
         const radius = size / 2;
+        const pulseFactor = 1 + 0.15 * Math.sin(Date.now() / 150);  
+        const pulseSize = size * pulseFactor;
+        const pulseRadius = pulseSize / 2;
+        
+        this.ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+        this.ctx.shadowBlur = 20;  
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
         
         this.ctx.beginPath();
-        this.ctx.arc(x, y - size * 0.1, radius * 0.8, Math.PI, 0, true);
+        this.ctx.arc(x, y - pulseSize * 0.1, pulseRadius * 0.8, Math.PI, 0, true);
         
-        const bottom = y + radius * 0.5;
-        const step = radius / 3;
+        const bottom = y + pulseRadius * 0.5;
+        const step = pulseRadius / 3;
         
-        this.ctx.lineTo(x + radius * 0.8, bottom - step);
-        this.ctx.lineTo(x + radius * 0.5, bottom);
-        this.ctx.lineTo(x + radius * 0.2, bottom - step);
-        this.ctx.lineTo(x - radius * 0.2, bottom);
-        this.ctx.lineTo(x - radius * 0.5, bottom - step);
-        this.ctx.lineTo(x - radius * 0.8, bottom);
+        this.ctx.lineTo(x + pulseRadius * 0.8, bottom - step);
+        this.ctx.lineTo(x + pulseRadius * 0.5, bottom);
+        this.ctx.lineTo(x + pulseRadius * 0.2, bottom - step);
+        this.ctx.lineTo(x - pulseRadius * 0.2, bottom);
+        this.ctx.lineTo(x - pulseRadius * 0.5, bottom - step);
+        this.ctx.lineTo(x - pulseRadius * 0.8, bottom);
         
         this.ctx.closePath();
         this.ctx.fill();
         
+        this.ctx.strokeStyle = 'rgba(100, 100, 255, 0.8)';
+        this.ctx.lineWidth = 2;
+        this.ctx.stroke();
+        
+        this.ctx.shadowBlur = 0; 
         this.ctx.fillStyle = 'black';
         this.ctx.beginPath();
-        this.ctx.arc(x - radius * 0.3, y - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
+        this.ctx.arc(x - pulseRadius * 0.3, y - pulseRadius * 0.2, pulseRadius * 0.15, 0, Math.PI * 2);
         this.ctx.fill();
         
         this.ctx.beginPath();
-        this.ctx.arc(x + radius * 0.3, y - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
+        this.ctx.arc(x + pulseRadius * 0.3, y - pulseRadius * 0.2, pulseRadius * 0.15, 0, Math.PI * 2);
         this.ctx.fill();
     }
 
