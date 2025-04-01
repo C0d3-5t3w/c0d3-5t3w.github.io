@@ -39,6 +39,11 @@ interface GameConstants {
     TAIL_EATING_DURATION: number;
     TAIL_EATING_MIN_INTERVAL: number;
     TAIL_EATING_MAX_INTERVAL: number;
+    GHOST_SIZE: number;
+    GHOST_COLOR: string;
+    GHOST_MIN_INTERVAL: number;
+    GHOST_MAX_INTERVAL: number;
+    GHOST_DURATION: number;
 }
 
 interface SnakeSegment {
@@ -53,6 +58,15 @@ interface Food {
 
 interface SpecialFood extends Food {
     timeLeft: number;
+}
+
+interface Ghost {
+    x: number;
+    y: number;
+    timeLeft: number;
+    targetX: number;
+    targetY: number;
+    speed: number;
 }
 
 const CONSTANTS: GameConstants = {
@@ -96,6 +110,11 @@ const CONSTANTS: GameConstants = {
     TAIL_EATING_DURATION: 20000, 
     TAIL_EATING_MIN_INTERVAL: 30000,
     TAIL_EATING_MAX_INTERVAL: 60000, 
+    GHOST_SIZE: 20,
+    GHOST_COLOR: 'rgba(255, 255, 255, 0.7)',
+    GHOST_MIN_INTERVAL: 15000, 
+    GHOST_MAX_INTERVAL: 40000, 
+    GHOST_DURATION: 25000, 
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -126,6 +145,8 @@ class Znek {
     private canvasContainer: HTMLElement | null;
     private resizeTimeout: number | null;
     private showNotification: boolean;
+    private ghosts: Ghost[]; 
+    private ghostTimeout?: number; 
     
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -151,6 +172,7 @@ class Znek {
         this.canvasContainer = document.getElementById('znekContainer');
         this.resizeTimeout = null;
         this.showNotification = false;
+        this.ghosts = [];
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
         
@@ -170,6 +192,8 @@ class Znek {
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
         this.scheduleTailEatingEvent();
+        this.scheduleGhostSpawn();
+        this.setupTouchEvents(); 
     }
 
     private setupResponsiveLayout(): void {
@@ -262,6 +286,11 @@ class Znek {
             this.tailEatingEventTimeout = undefined;
         }
         
+        if (this.ghostTimeout) {
+            clearTimeout(this.ghostTimeout);
+            this.ghostTimeout = undefined;
+        }
+        
         this.snake = [{ x: 10, y: 10 }];
         this.food = this.generateFood();
         this.direction = 'right';
@@ -269,6 +298,7 @@ class Znek {
         this.specialFood = null;
         this.hasTailEatingPower = false;
         this.tailEatingTimeLeft = 0;
+        this.ghosts = [];
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
@@ -277,6 +307,7 @@ class Znek {
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
         this.scheduleTailEatingEvent();
+        this.scheduleGhostSpawn();
         
         if (this.restartButtonElement) {
             this.restartButtonElement.style.display = 'none';
@@ -383,7 +414,142 @@ class Znek {
         }, duration);
     }
 
+    private scheduleGhostSpawn(): void {
+        const randomTime = Math.floor(Math.random() * 
+            (CONSTANTS.GHOST_MAX_INTERVAL - CONSTANTS.GHOST_MIN_INTERVAL)) + 
+            CONSTANTS.GHOST_MIN_INTERVAL;
+
+        this.ghostTimeout = window.setTimeout(() => {
+            if (!this.gameOver && this.gameStarted) {
+                this.spawnGhost();
+            }
+            
+            this.scheduleGhostSpawn();
+        }, randomTime);
+    }
+    
+    private spawnGhost(): void {
+        let x, y, tooCloseToSnake;
+        const safeDistance = 150; 
+        
+        do {
+            x = Math.floor(Math.random() * (this.canvas.width / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE;
+            y = Math.floor(Math.random() * (this.canvas.height / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE;
+            
+            const head = this.snake[0];
+            const distance = Math.sqrt(
+                Math.pow(x - head.x, 2) + Math.pow(y - head.y, 2)
+            );
+            
+            tooCloseToSnake = distance < safeDistance;
+        } while (tooCloseToSnake);
+        
+        const ghost: Ghost = {
+            x,
+            y,
+            timeLeft: CONSTANTS.GHOST_DURATION,
+            targetX: 0, 
+            targetY: 0, 
+            speed: CONSTANTS.GAME_SPEED / 4 
+        };
+        
+        this.ghosts.push(ghost);
+    }
+    
+    private moveGhosts(): void {
+        if (!this.gameStarted || this.ghosts.length === 0) return;
+        
+        const head = this.snake[0];
+        
+        this.ghosts.forEach(ghost => {
+            ghost.targetX = head.x;
+            ghost.targetY = head.y;
+            
+            const dx = ghost.targetX - ghost.x;
+            const dy = ghost.targetY - ghost.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            if (distance > 0) {
+                const moveX = (dx / distance) * (CONSTANTS.GRID_SIZE / 4);
+                const moveY = (dy / distance) * (CONSTANTS.GRID_SIZE / 4);
+                
+                let newX = ghost.x + moveX;
+                let newY = ghost.y + moveY;
+                
+                const wouldHitBody = this.snake.some((segment, i) => 
+                    i > 0 && 
+                    Math.abs(segment.x - newX) < CONSTANTS.GRID_SIZE / 2 &&
+                    Math.abs(segment.y - newY) < CONSTANTS.GRID_SIZE / 2
+                );
+                
+                if (wouldHitBody) {
+                    if (Math.abs(dx) > Math.abs(dy)) {
+                        newX = ghost.x + Math.sign(dx) * (CONSTANTS.GRID_SIZE / 4);
+                        newY = ghost.y;
+                        
+                        const horizontalHitsBody = this.snake.some((segment, i) => 
+                            i > 0 &&
+                            Math.abs(segment.x - newX) < CONSTANTS.GRID_SIZE / 2 &&
+                            Math.abs(segment.y - newY) < CONSTANTS.GRID_SIZE / 2
+                        );
+                        
+                        if (horizontalHitsBody) {
+                            newX = ghost.x;
+                            newY = ghost.y + Math.sign(dy) * (CONSTANTS.GRID_SIZE / 4);
+                        }
+                    } else {
+                        newX = ghost.x;
+                        newY = ghost.y + Math.sign(dy) * (CONSTANTS.GRID_SIZE / 4);
+                        
+                        const verticalHitsBody = this.snake.some((segment, i) => 
+                            i > 0 &&
+                            Math.abs(segment.x - newX) < CONSTANTS.GRID_SIZE / 2 &&
+                            Math.abs(segment.y - newY) < CONSTANTS.GRID_SIZE / 2
+                        );
+                        
+                        if (verticalHitsBody) {
+                            newX = ghost.x + Math.sign(dx) * (CONSTANTS.GRID_SIZE / 4);
+                            newY = ghost.y;
+                        }
+                    }
+                }
+                
+                ghost.x = newX;
+                ghost.y = newY;
+            }
+            
+            ghost.timeLeft -= CONSTANTS.GAME_SPEED;
+        });
+        
+        this.ghosts = this.ghosts.filter(ghost => ghost.timeLeft > 0);
+    }
+    
+    private checkGhostCollisions(): boolean {
+        if (!this.gameStarted || this.ghosts.length === 0) return false;
+        
+        const head = this.snake[0];
+        const headCenterX = head.x + CONSTANTS.SNAKE_HEAD_SIZE / 2;
+        const headCenterY = head.y + CONSTANTS.SNAKE_HEAD_SIZE / 2;
+        
+        return this.ghosts.some(ghost => {
+            const ghostCenterX = ghost.x + CONSTANTS.GHOST_SIZE / 2;
+            const ghostCenterY = ghost.y + CONSTANTS.GHOST_SIZE / 2;
+            
+            const dx = headCenterX - ghostCenterX;
+            const dy = headCenterY - ghostCenterY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            return distance < (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.GHOST_SIZE) / 2.5;
+        });
+    }
+
     private handleKeyPress(e: KeyboardEvent): void {
+        if (this.gameOver && this.canReset) {
+            e.preventDefault();
+            this.reset();
+            return;
+        }
+
         if (this.gameOver && this.canReset) {
             e.preventDefault();
             this.reset();
@@ -452,6 +618,21 @@ class Znek {
         }
     }
 
+    public resetGame(): void {
+        if (this.gameOver && this.canReset) {
+            this.reset();
+        }
+    }
+
+    private setupTouchEvents(): void {
+        this.canvas.addEventListener('touchstart', (e) => {
+            if (this.gameOver && this.canReset) {
+                e.preventDefault();
+                this.reset();
+            }
+        });
+    }
+
     private update(): void {
         if (this.gameOver) {
             this.deathTimer++;
@@ -464,6 +645,18 @@ class Znek {
                     this.restartButtonElement.style.display = 'block';
                 }
             }
+            return;
+        }
+
+        this.moveGhosts();
+        
+        if (this.checkGhostCollisions()) {
+            if (this.gameLoop) clearInterval(this.gameLoop);
+            if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
+            if (this.tailEatingEventTimeout) clearTimeout(this.tailEatingEventTimeout);
+            if (this.ghostTimeout) clearTimeout(this.ghostTimeout);
+            this.gameOver = true;
+            this.saveHighScore(this.score);
             return;
         }
 
@@ -481,6 +674,7 @@ class Znek {
                 if (this.gameLoop) clearInterval(this.gameLoop);
                 if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
                 if (this.tailEatingEventTimeout) clearTimeout(this.tailEatingEventTimeout);
+                if (this.ghostTimeout) clearTimeout(this.ghostTimeout);
                 this.gameOver = true;
                 this.saveHighScore(this.score);
                 return;
@@ -501,6 +695,7 @@ class Znek {
                 if (this.gameLoop) clearInterval(this.gameLoop);
                 if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
                 if (this.tailEatingEventTimeout) clearTimeout(this.tailEatingEventTimeout);
+                if (this.ghostTimeout) clearTimeout(this.ghostTimeout);
                 this.gameOver = true;
                 this.saveHighScore(this.score);
                 return;
@@ -652,6 +847,35 @@ class Znek {
             this.ctx.restore();
         }
 
+        this.ghosts.forEach(ghost => {
+            this.ctx.save();
+            
+            this.ctx.fillStyle = CONSTANTS.GHOST_COLOR;
+            this.ctx.shadowColor = 'rgba(100, 100, 255, 0.8)';
+            this.ctx.shadowBlur = 15;
+            
+            this.drawGhost(
+                ghost.x + CONSTANTS.GHOST_SIZE / 2,
+                ghost.y + CONSTANTS.GHOST_SIZE / 2,
+                CONSTANTS.GHOST_SIZE
+            );
+            
+            const timerWidth = CONSTANTS.GHOST_SIZE * 1.2;
+            const timerX = ghost.x - (timerWidth - CONSTANTS.GHOST_SIZE) / 2;
+            const timerY = ghost.y - CONSTANTS.TIMER_MARGIN - CONSTANTS.TIMER_HEIGHT;
+            const percentLeft = ghost.timeLeft / CONSTANTS.GHOST_DURATION;
+            
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fill();
+            
+            this.ctx.fillStyle = CONSTANTS.GHOST_COLOR;
+            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fill();
+            
+            this.ctx.restore();
+        });
+
         if (this.showNotification) {
             this.ctx.save();
             this.ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
@@ -732,12 +956,18 @@ class Znek {
             });
             
             if (this.canReset) {
-                const resetText = 'Press any key or touch to restart';
+                this.ctx.save();
+                this.ctx.font = 'bold 26px Arial';
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${0.7 + 0.3 * Math.sin(this.deathTimer * 0.1)})`;
+                this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+                this.ctx.shadowBlur = 5;
+                const resetText = 'Press ANY KEY or D-PAD to restart';
                 this.ctx.fillText(
                     resetText, 
                     this.canvas.width / 2, 
                     this.canvas.height - 50
                 );
+                this.ctx.restore();
             }
             
             this.ctx.restore();
@@ -776,6 +1006,35 @@ class Znek {
         this.ctx.lineTo(x - size / 1.5, y - size / 4);
         this.ctx.lineTo(x - size / 1.5, y + size / 4);
         this.ctx.closePath();
+        this.ctx.fill();
+    }
+
+    private drawGhost(x: number, y: number, size: number): void {
+        const radius = size / 2;
+        
+        this.ctx.beginPath();
+        this.ctx.arc(x, y - size * 0.1, radius * 0.8, Math.PI, 0, true);
+        
+        const bottom = y + radius * 0.5;
+        const step = radius / 3;
+        
+        this.ctx.lineTo(x + radius * 0.8, bottom - step);
+        this.ctx.lineTo(x + radius * 0.5, bottom);
+        this.ctx.lineTo(x + radius * 0.2, bottom - step);
+        this.ctx.lineTo(x - radius * 0.2, bottom);
+        this.ctx.lineTo(x - radius * 0.5, bottom - step);
+        this.ctx.lineTo(x - radius * 0.8, bottom);
+        
+        this.ctx.closePath();
+        this.ctx.fill();
+        
+        this.ctx.fillStyle = 'black';
+        this.ctx.beginPath();
+        this.ctx.arc(x - radius * 0.3, y - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
+        this.ctx.fill();
+        
+        this.ctx.beginPath();
+        this.ctx.arc(x + radius * 0.3, y - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
         this.ctx.fill();
     }
 }
