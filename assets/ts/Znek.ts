@@ -44,6 +44,9 @@ interface GameConstants {
     GHOST_MIN_INTERVAL: number;
     GHOST_MAX_INTERVAL: number;
     GHOST_DURATION: number;
+    BULLET_SIZE: number;
+    BULLET_COLOR: string;
+    BULLET_RANGE: number;
 }
 
 interface SnakeSegment {
@@ -67,6 +70,13 @@ interface Ghost {
     targetX: number;
     targetY: number;
     speed: number;
+}
+
+interface Bullet {
+    x: number;
+    y: number;
+    direction: Direction;
+    distanceTraveled: number;
 }
 
 const CONSTANTS: GameConstants = {
@@ -111,10 +121,13 @@ const CONSTANTS: GameConstants = {
     TAIL_EATING_MIN_INTERVAL: 30000,
     TAIL_EATING_MAX_INTERVAL: 60000, 
     GHOST_SIZE: 20,
-    GHOST_COLOR: 'rgba(255, 255, 255, 0.7)',
+    GHOST_COLOR: 'white',
     GHOST_MIN_INTERVAL: 15000, 
     GHOST_MAX_INTERVAL: 40000, 
     GHOST_DURATION: 25000, 
+    BULLET_SIZE: 12,
+    BULLET_COLOR: '#ff3333',
+    BULLET_RANGE: 200,
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -147,6 +160,7 @@ class Znek {
     private showNotification: boolean;
     private ghosts: Ghost[]; 
     private ghostTimeout?: number; 
+    private bullets: Bullet[];
     
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -173,6 +187,7 @@ class Znek {
         this.resizeTimeout = null;
         this.showNotification = false;
         this.ghosts = [];
+        this.bullets = [];
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
         
@@ -299,6 +314,7 @@ class Znek {
         this.hasTailEatingPower = false;
         this.tailEatingTimeLeft = 0;
         this.ghosts = [];
+        this.bullets = [];
         this.gameOver = false;
         this.deathTimer = 0;
         this.canReset = false;
@@ -550,9 +566,9 @@ class Znek {
             return;
         }
 
-        if (this.gameOver && this.canReset) {
+        if (e.code === 'Space') {
             e.preventDefault();
-            this.reset();
+            this.shootBullet();
             return;
         }
 
@@ -584,9 +600,14 @@ class Znek {
         }
     }
 
-    public handleDPadInput(direction: Direction): void {
+    public handleDPadInput(direction: Direction | 'shoot'): void {
         if (this.gameOver && this.canReset) {
             this.reset();
+            return;
+        }
+
+        if (direction === 'shoot') {
+            this.shootBullet();
             return;
         }
 
@@ -618,19 +639,20 @@ class Znek {
         }
     }
 
-    public resetGame(): void {
-        if (this.gameOver && this.canReset) {
-            this.reset();
-        }
-    }
-
-    private setupTouchEvents(): void {
-        this.canvas.addEventListener('touchstart', (e) => {
-            if (this.gameOver && this.canReset) {
-                e.preventDefault();
-                this.reset();
-            }
-        });
+    private shootBullet(): void {
+        if (!this.gameStarted || this.gameOver) return;
+        
+        const head = this.snake[0];
+        const bulletSize = CONSTANTS.BULLET_SIZE;
+        
+        const bullet: Bullet = {
+            x: head.x + CONSTANTS.SNAKE_HEAD_SIZE / 2 - bulletSize / 2,
+            y: head.y + CONSTANTS.SNAKE_HEAD_SIZE / 2 - bulletSize / 2,
+            direction: this.direction,
+            distanceTraveled: 0
+        };
+        
+        this.bullets.push(bullet);
     }
 
     private update(): void {
@@ -649,6 +671,8 @@ class Znek {
         }
 
         this.moveGhosts();
+        this.moveBullets();
+        this.checkBulletGhostCollisions();
         
         if (this.checkGhostCollisions()) {
             if (this.gameLoop) clearInterval(this.gameLoop);
@@ -748,6 +772,67 @@ class Znek {
         }
 
         this.draw();
+    }
+
+    private moveBullets(): void {
+        const speed = CONSTANTS.GRID_SIZE * 2; 
+        
+        this.bullets.forEach(bullet => {
+            switch(bullet.direction) {
+                case 'up': bullet.y -= speed; break;
+                case 'down': bullet.y += speed; break;
+                case 'left': bullet.x -= speed; break;
+                case 'right': bullet.x += speed; break;
+            }
+            
+            bullet.distanceTraveled += speed;
+        });
+        
+        this.bullets = this.bullets.filter(bullet => 
+            bullet.distanceTraveled < CONSTANTS.BULLET_RANGE &&
+            bullet.x >= 0 && 
+            bullet.x < this.canvas.width && 
+            bullet.y >= 0 && 
+            bullet.y < this.canvas.height
+        );
+    }
+
+    private checkBulletGhostCollisions(): void {
+        if (this.bullets.length === 0 || this.ghosts.length === 0) return;
+        
+        const bulletsToRemove: number[] = [];
+        const ghostsToRemove: number[] = [];
+        
+        this.bullets.forEach((bullet, bulletIndex) => {
+            const bulletCenterX = bullet.x + CONSTANTS.BULLET_SIZE / 2;
+            const bulletCenterY = bullet.y + CONSTANTS.BULLET_SIZE / 2;
+            
+            this.ghosts.forEach((ghost, ghostIndex) => {
+                const ghostCenterX = ghost.x + CONSTANTS.GHOST_SIZE / 2;
+                const ghostCenterY = ghost.y + CONSTANTS.GHOST_SIZE / 2;
+                
+                const dx = bulletCenterX - ghostCenterX;
+                const dy = bulletCenterY - ghostCenterY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < (CONSTANTS.BULLET_SIZE + CONSTANTS.GHOST_SIZE) / 2) {
+                    if (!bulletsToRemove.includes(bulletIndex)) {
+                        bulletsToRemove.push(bulletIndex);
+                    }
+                    if (!ghostsToRemove.includes(ghostIndex)) {
+                        ghostsToRemove.push(ghostIndex);
+                    }
+                }
+            });
+        });
+        
+        ghostsToRemove.sort((a, b) => b - a).forEach(index => {
+            this.ghosts.splice(index, 1);
+        });
+        
+        bulletsToRemove.sort((a, b) => b - a).forEach(index => {
+            this.bullets.splice(index, 1);
+        });
     }
 
     private checkCollision(head: SnakeSegment): boolean {
@@ -873,6 +958,23 @@ class Znek {
             this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
             this.ctx.fill();
             
+            this.ctx.restore();
+        });
+
+        this.bullets.forEach(bullet => {
+            this.ctx.save();
+            this.ctx.fillStyle = CONSTANTS.BULLET_COLOR;
+            this.ctx.shadowColor = 'rgba(255, 100, 100, 0.8)';
+            this.ctx.shadowBlur = 10;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                bullet.x + CONSTANTS.BULLET_SIZE / 2,
+                bullet.y + CONSTANTS.BULLET_SIZE / 2,
+                CONSTANTS.BULLET_SIZE / 2,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.fill();
             this.ctx.restore();
         });
 
