@@ -33,15 +33,12 @@ interface GameConstants {
     RESTART_BUTTON_WIDTH: number;
     RESTART_BUTTON_HEIGHT: number;
     RESTART_BUTTON_MARGIN: number;
-    STAR_FOOD_SIZE: number;
-    STAR_FOOD_COLOR: string;
-    STAR_FOOD_POINTS: number;
-    STAR_FOOD_DURATION: number;
-    STAR_FOOD_MIN_INTERVAL: number;
-    STAR_FOOD_MAX_INTERVAL: number;
     TIMER_HEIGHT: number;
     TIMER_MARGIN: number;
     TIMER_RADIUS: number;
+    TAIL_EATING_DURATION: number;
+    TAIL_EATING_MIN_INTERVAL: number;
+    TAIL_EATING_MAX_INTERVAL: number;
 }
 
 interface SnakeSegment {
@@ -55,10 +52,6 @@ interface Food {
 }
 
 interface SpecialFood extends Food {
-    timeLeft: number;
-}
-
-interface StarFood extends Food {
     timeLeft: number;
 }
 
@@ -97,15 +90,12 @@ const CONSTANTS: GameConstants = {
     RESTART_BUTTON_WIDTH: 120,
     RESTART_BUTTON_HEIGHT: 40,
     RESTART_BUTTON_MARGIN: 20,
-    STAR_FOOD_SIZE: 35,
-    STAR_FOOD_COLOR: '#ffff00', 
-    STAR_FOOD_POINTS: 3,
-    STAR_FOOD_DURATION: 10000, 
-    STAR_FOOD_MIN_INTERVAL: 20000,
-    STAR_FOOD_MAX_INTERVAL: 40000,
     TIMER_HEIGHT: 5,
     TIMER_MARGIN: 10,
     TIMER_RADIUS: 2,
+    TAIL_EATING_DURATION: 20000, 
+    TAIL_EATING_MIN_INTERVAL: 30000,
+    TAIL_EATING_MAX_INTERVAL: 60000, 
 };
 
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -122,10 +112,9 @@ class Znek {
     private score: number;
     private specialFood: SpecialFood | null; 
     private specialFoodTimeout?: number;
-    private starFood: StarFood | null;
-    private starFoodTimeout?: number;
     private hasTailEatingPower: boolean;
     private tailEatingTimeLeft: number;
+    private tailEatingEventTimeout?: number;
     private highScores: number[];
     private gameOver: boolean;
     private deathTimer: number;
@@ -136,6 +125,7 @@ class Znek {
     private restartButtonElement: HTMLElement | null;
     private canvasContainer: HTMLElement | null;
     private resizeTimeout: number | null;
+    private showNotification: boolean;
     
     constructor() {
         this.canvas = document.getElementById('znekCanvas') as HTMLCanvasElement;
@@ -149,7 +139,6 @@ class Znek {
         this.backgroundImg = new Image();
         this.backgroundImg.src = '../assets/images/gr1.png';
         this.specialFood = null;
-        this.starFood = null;
         this.hasTailEatingPower = false; 
         this.tailEatingTimeLeft = 0;
         this.highScores = this.loadHighScores();
@@ -161,6 +150,7 @@ class Znek {
         this.restartButtonElement = document.getElementById('znekRestartButton');
         this.canvasContainer = document.getElementById('znekContainer');
         this.resizeTimeout = null;
+        this.showNotification = false;
         
         this.handleKeyPressMethod = this.handleKeyPress.bind(this);
         
@@ -179,7 +169,7 @@ class Znek {
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
-        this.scheduleStarFood();
+        this.scheduleTailEatingEvent();
     }
 
     private setupResponsiveLayout(): void {
@@ -267,9 +257,9 @@ class Znek {
             this.specialFoodTimeout = undefined;
         }
         
-        if (this.starFoodTimeout) {
-            clearTimeout(this.starFoodTimeout);
-            this.starFoodTimeout = undefined;
+        if (this.tailEatingEventTimeout) {
+            clearTimeout(this.tailEatingEventTimeout);
+            this.tailEatingEventTimeout = undefined;
         }
         
         this.snake = [{ x: 10, y: 10 }];
@@ -277,7 +267,6 @@ class Znek {
         this.direction = 'right';
         this.score = 0;
         this.specialFood = null;
-        this.starFood = null;
         this.hasTailEatingPower = false;
         this.tailEatingTimeLeft = 0;
         this.gameOver = false;
@@ -287,7 +276,7 @@ class Znek {
         
         this.gameLoop = window.setInterval(this.update.bind(this), CONSTANTS.GAME_SPEED);
         this.scheduleSpecialFood();
-        this.scheduleStarFood();
+        this.scheduleTailEatingEvent();
         
         if (this.restartButtonElement) {
             this.restartButtonElement.style.display = 'none';
@@ -368,45 +357,30 @@ class Znek {
         }, randomTime);
     }
 
-    private scheduleStarFood(): void {
+    private scheduleTailEatingEvent(): void {
         const randomTime = Math.floor(Math.random() * 
-            (CONSTANTS.STAR_FOOD_MAX_INTERVAL - CONSTANTS.STAR_FOOD_MIN_INTERVAL)) + 
-            CONSTANTS.STAR_FOOD_MIN_INTERVAL;
+            (CONSTANTS.TAIL_EATING_MAX_INTERVAL - CONSTANTS.TAIL_EATING_MIN_INTERVAL)) + 
+            CONSTANTS.TAIL_EATING_MIN_INTERVAL;
 
-        this.starFoodTimeout = window.setTimeout(() => {
-            let newStarFood: Food;
-            let onSnakeOrFood: boolean;
-            let attempts = 0;
-            const maxAttempts = 100;
-
-            do {
-                newStarFood = {
-                    x: Math.floor(Math.random() * (this.canvas.width / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE,
-                    y: Math.floor(Math.random() * (this.canvas.height / CONSTANTS.GRID_SIZE)) * CONSTANTS.GRID_SIZE
-                };
-
-                // onSnakeOrFood = this.snake.some(segment => 
-                //     segment.x === newStarFood.x && segment.y === newStarFood.y) || 
-                //     (this.food.x === newStarFood.x && this.food.y === newStarFood.y) ||
-                //     (this.specialFood && this.specialFood.x === newStarFood.x && this.specialFood.y === newStarFood.y);
-
-                attempts++;
-                if (attempts >= maxAttempts) {
-                    this.scheduleStarFood();
-                    return;
-                }
-            } while (onSnakeOrFood);
-
-            this.starFood = {
-                ...newStarFood,
-                timeLeft: CONSTANTS.STAR_FOOD_DURATION
-            };
-
-            window.setTimeout(() => {
-                this.starFood = null;
-                this.scheduleStarFood();
-            }, CONSTANTS.STAR_FOOD_DURATION);
+        this.tailEatingEventTimeout = window.setTimeout(() => {
+            if (!this.gameOver) {
+                this.hasTailEatingPower = true;
+                this.tailEatingTimeLeft = CONSTANTS.TAIL_EATING_DURATION;
+                
+                const notificationDuration = 3000; 
+                this.displayTailEatingNotification(notificationDuration);
+            }
+            
+            this.scheduleTailEatingEvent();
         }, randomTime);
+    }
+    
+    private displayTailEatingNotification(duration: number): void {
+        this.showNotification = true;
+        
+        setTimeout(() => {
+            this.showNotification = false;
+        }, duration);
     }
 
     private handleKeyPress(e: KeyboardEvent): void {
@@ -506,7 +480,7 @@ class Znek {
             if (this.checkCollision(head)) {
                 if (this.gameLoop) clearInterval(this.gameLoop);
                 if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
-                if (this.starFoodTimeout) clearTimeout(this.starFoodTimeout);
+                if (this.tailEatingEventTimeout) clearTimeout(this.tailEatingEventTimeout);
                 this.gameOver = true;
                 this.saveHighScore(this.score);
                 return;
@@ -544,24 +518,6 @@ class Znek {
                     this.score += CONSTANTS.SPECIAL_FOOD_POINTS;
                     this.specialFood = null;
                     this.scheduleSpecialFood();
-                }
-            } else if (this.starFood) {
-                const starFoodCenterX = this.starFood.x + CONSTANTS.STAR_FOOD_SIZE / 2;
-                const starFoodCenterY = this.starFood.y + CONSTANTS.STAR_FOOD_SIZE / 2;
-
-                const headToStarFoodDistance = Math.sqrt(
-                    Math.pow(headCenterX - starFoodCenterX, 2) + 
-                    Math.pow(headCenterY - starFoodCenterY, 2)
-                );
-
-                const starCollisionRadius = (CONSTANTS.SNAKE_HEAD_SIZE + CONSTANTS.STAR_FOOD_SIZE) / 2.5;
-
-                if (headToStarFoodDistance < starCollisionRadius) {
-                    this.score += CONSTANTS.STAR_FOOD_POINTS;
-                    this.hasTailEatingPower = true; 
-                    this.tailEatingTimeLeft = CONSTANTS.STAR_FOOD_DURATION;
-                    this.starFood = null;
-                    this.scheduleStarFood();
                 }
             } else {
                 this.snake.pop();
@@ -681,36 +637,33 @@ class Znek {
             this.ctx.restore();
         }
 
-        if (this.starFood) {
-            const pulseFactor = 1 + 0.15 * Math.sin(Date.now() / 150);
-            const actualSize = CONSTANTS.STAR_FOOD_SIZE * pulseFactor;
-
+        if (this.showNotification) {
             this.ctx.save();
-            this.ctx.fillStyle = CONSTANTS.STAR_FOOD_COLOR;
-            this.ctx.shadowColor = 'rgba(255, 255, 0, 0.8)';
-            this.ctx.shadowBlur = 20;
-
-            this.drawStar(
-                this.starFood.x + CONSTANTS.STAR_FOOD_SIZE / 2, 
-                this.starFood.y + CONSTANTS.STAR_FOOD_SIZE / 2, 
-                5, 
-                actualSize / 2, 
-                actualSize / 4
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+            this.ctx.font = 'bold 24px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.fillText(
+                'TAIL EATING POWER ACTIVATED!',
+                this.canvas.width / 2,
+                60
             );
-
-            const timerWidth = CONSTANTS.STAR_FOOD_SIZE * 1.2;
-            const timerX = this.starFood.x - (timerWidth - CONSTANTS.STAR_FOOD_SIZE) / 2;
-            const timerY = this.starFood.y - CONSTANTS.TIMER_MARGIN - CONSTANTS.TIMER_HEIGHT;
-            const percentLeft = this.starFood.timeLeft / CONSTANTS.STAR_FOOD_DURATION;
-
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.restore();
+        }
+        
+        if (this.hasTailEatingPower) {
+            this.ctx.save();
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
+            const barWidth = 100;
+            const barHeight = 10;
+            const barX = this.canvas.width - barWidth - 10;
+            const barY = 10;
+            this.roundedRect(barX, barY, barWidth, barHeight, 5);
             this.ctx.fill();
-
-            this.ctx.fillStyle = CONSTANTS.STAR_FOOD_COLOR;
-            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            
+            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
+            const percentLeft = this.tailEatingTimeLeft / CONSTANTS.TAIL_EATING_DURATION;
+            this.roundedRect(barX, barY, barWidth * percentLeft, barHeight, 5);
             this.ctx.fill();
-
             this.ctx.restore();
         }
 
@@ -807,30 +760,6 @@ class Znek {
         this.ctx.moveTo(x - size / 2, y);
         this.ctx.lineTo(x - size / 1.5, y - size / 4);
         this.ctx.lineTo(x - size / 1.5, y + size / 4);
-        this.ctx.closePath();
-        this.ctx.fill();
-    }
-
-    private drawStar(cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number): void {
-        let rot = Math.PI / 2 * 3;
-        let x = cx;
-        let y = cy;
-        const step = Math.PI / spikes;
-
-        this.ctx.beginPath();
-        this.ctx.moveTo(cx, cy - outerRadius);
-        for (let i = 0; i < spikes; i++) {
-            x = cx + Math.cos(rot) * outerRadius;
-            y = cy + Math.sin(rot) * outerRadius;
-            this.ctx.lineTo(x, y);
-            rot += step;
-
-            x = cx + Math.cos(rot) * innerRadius;
-            y = cy + Math.sin(rot) * innerRadius;
-            this.ctx.lineTo(x, y);
-            rot += step;
-        }
-        this.ctx.lineTo(cx, cy - outerRadius);
         this.ctx.closePath();
         this.ctx.fill();
     }
