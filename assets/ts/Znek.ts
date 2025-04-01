@@ -477,7 +477,27 @@ class Znek {
                 case 'right': head.x += CONSTANTS.GRID_SIZE; break;
             }
 
-            if (this.checkCollision(head)) {
+            if (head.x < 0 || head.x >= this.canvas.width || head.y < 0 || head.y >= this.canvas.height) {
+                if (this.gameLoop) clearInterval(this.gameLoop);
+                if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
+                if (this.tailEatingEventTimeout) clearTimeout(this.tailEatingEventTimeout);
+                this.gameOver = true;
+                this.saveHighScore(this.score);
+                return;
+            }
+            
+            if (this.hasTailEatingPower) {
+                const collisionIndex = this.snake.findIndex((segment, i) => 
+                    i > 2 && segment.x === head.x && segment.y === head.y
+                );
+                
+                if (collisionIndex > 2) {
+                    const segmentsEaten = this.snake.length - collisionIndex;
+                    this.score += Math.ceil(segmentsEaten / 2); 
+                    
+                    this.snake = this.snake.slice(0, collisionIndex);
+                }
+            } else if (this.checkCollision(head)) {
                 if (this.gameLoop) clearInterval(this.gameLoop);
                 if (this.specialFoodTimeout) clearTimeout(this.specialFoodTimeout);
                 if (this.tailEatingEventTimeout) clearTimeout(this.tailEatingEventTimeout);
@@ -536,11 +556,6 @@ class Znek {
     }
 
     private checkCollision(head: SnakeSegment): boolean {
-        if (head.x < 0 || head.x >= this.canvas.width ||
-            head.y < 0 || head.y >= this.canvas.height) {
-            return true;
-        }
-        
         return this.snake.some((segment, i) => 
             i > 2 && segment.x === head.x && segment.y === head.y
         );
