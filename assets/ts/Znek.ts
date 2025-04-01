@@ -816,10 +816,10 @@ class Znek {
                 const distance = Math.sqrt(dx * dx + dy * dy);
                 
                 if (distance < (CONSTANTS.BULLET_SIZE + CONSTANTS.GHOST_SIZE) / 2) {
-                    if (!bulletsToRemove.includes(bulletIndex)) {
+                    if (bulletsToRemove.indexOf(bulletIndex) === -1) {
                         bulletsToRemove.push(bulletIndex);
                     }
-                    if (!ghostsToRemove.includes(ghostIndex)) {
+                    if (ghostsToRemove.indexOf(ghostIndex) === -1) {
                         ghostsToRemove.push(ghostIndex);
                     }
                 }
@@ -1138,6 +1138,56 @@ class Znek {
         this.ctx.beginPath();
         this.ctx.arc(x + radius * 0.3, y - radius * 0.2, radius * 0.15, 0, Math.PI * 2);
         this.ctx.fill();
+    }
+
+    private setupTouchEvents(): void {
+        if (!this.dpadElement) return;
+        
+        const upButton = this.dpadElement.querySelector('.d-pad-up');
+        const downButton = this.dpadElement.querySelector('.d-pad-down');
+        const leftButton = this.dpadElement.querySelector('.d-pad-left');
+        const rightButton = this.dpadElement.querySelector('.d-pad-right');
+        const centerButton = this.dpadElement.querySelector('.d-pad-center');
+        
+        if (upButton) {
+            upButton.addEventListener('click', () => this.handleDPadInput('up'));
+            upButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handleDPadInput('up');
+            });
+        }
+        
+        if (downButton) {
+            downButton.addEventListener('click', () => this.handleDPadInput('down'));
+            downButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handleDPadInput('down');
+            });
+        }
+        
+        if (leftButton) {
+            leftButton.addEventListener('click', () => this.handleDPadInput('left'));
+            leftButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handleDPadInput('left');
+            });
+        }
+        
+        if (rightButton) {
+            rightButton.addEventListener('click', () => this.handleDPadInput('right'));
+            rightButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handleDPadInput('right');
+            });
+        }
+        
+        if (centerButton) {
+            centerButton.addEventListener('click', () => this.handleDPadInput('shoot'));
+            centerButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                this.handleDPadInput('shoot');
+            });
+        }
     }
 }
 
