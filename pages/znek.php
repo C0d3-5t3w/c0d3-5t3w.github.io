@@ -52,6 +52,54 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             font-weight: bold;
         }
         
+        .ghost-note {
+            color: #00ccff;
+            font-weight: bold;
+        }
+        
+        .game-controls {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            border: 2px solid var(--accent-teal);
+            border-radius: 12px;
+            padding: 15px 25px;
+            color: var(--primary-color);
+            text-align: center;
+            transition: all 0.4s cubic-bezier(0.215, 0.61, 0.355, 1);
+            max-width: 80%;
+            z-index: 1100;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+        }
+        
+        .game-controls h3 {
+            margin-top: 0;
+            color: #ff9900;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .game-controls p {
+            margin: 5px 0;
+        }
+        
+        .game-controls.fade-out {
+            opacity: 0;
+            transform: translateX(-50%) translateY(-40px); /* More dramatic upward movement */
+            pointer-events: none;
+        }
+        
+        .instructions {
+            font-weight: bold;
+            color: #ffcc00;
+            margin-top: 15px !important;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
         .d-pad-container {
             position: fixed;
             bottom: 30px;
@@ -115,6 +163,33 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             border-radius: 0 0 8px 8px;
         }
         
+        .shoot-button {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            right: -80px;
+            top: 50%;
+            transform: translateY(-50%);
+            background-color: rgba(255, 60, 60, 0.8);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            user-select: none;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.3);
+            transition: all 0.15s ease;
+        }
+        
+        .shoot-button:active, .shoot-button.active {
+            background-color: rgba(200, 30, 30, 0.9);
+            transform: translateY(-50%) scale(0.95);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+        }
+        
         @media (min-width: 768px) {
             .d-pad-container {
                 right: 30px;
@@ -134,17 +209,15 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <canvas id="znekCanvas" width="800" height="600"></canvas>
         </div>
         <div id="controls" class="game-controls">
-            <h3>Controls:</h3>
-            <p>Desktop: Use Arrow Keys to control the snake</p>
-            <p>Mobile/Desktop: Use D-pad controls at the bottom of the screen</p>
-            <p>⬆️ Up button: Move Up</p>
-            <p>⬇️ Down button: Move Down</p>
-            <p>⬅️ Left button: Move Left</p>
-            <p>➡️ Right button: Move Right</p>
-            <p>Collect the red food to grow</p>
-            <p class="special-food-note">Special purple food appears occasionally and is worth 5 points!</p>
-            <p>Watch out - special food disappears after a few seconds, and makes the tail longer so grab it quickly!</p>
-            <p class="instructions">Press any arrow key or use D-pad to begin moving</p>
+            <h3>HOW TO PLAY ZNEK</h3>
+            <p><strong>🐍 Goal:</strong> Guide your snake, eat food, and avoid obstacles</p>
+            <p><strong>🎮 Controls:</strong> Arrow keys or D-pad to move</p>
+            <p><strong>🔫 Combat:</strong> Press SPACE or use Shoot button to fire at ghosts</p>
+            <p class="ghost-note">⚠️ Ghosts will chase you - shoot them before they catch you!</p>
+            <p><strong>🍽️ Food:</strong> Blue food grows your snake by 1 segment</p>
+            <p class="special-food-note">💫 Purple special food appears occasionally (worth 5 points!)</p>
+            <p><strong>✨ Power-up:</strong> Yellow glow lets you eat your own tail temporarily</p>
+            <p class="instructions">Press ANY key or touch D-pad to begin</p>
         </div>
         
         <div class="d-pad-container">
@@ -153,6 +226,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <div class="d-pad-button d-pad-center"></div>
             <div class="d-pad-button d-pad-right" data-direction="right">➡️</div>
             <div class="d-pad-button d-pad-down" data-direction="down">⬇️</div>
+            <div class="shoot-button" data-direction="shoot">🔴</div>
         </div>
     </div>
     <script>
@@ -165,13 +239,15 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         document.addEventListener('DOMContentLoaded', async function() {
             const controls = document.getElementById('controls');
             const restartButton = document.getElementById('restartButton');
-            const dPadButtons = document.querySelectorAll('.d-pad-button[data-direction]');
+            const dPadButtons = document.querySelectorAll('.d-pad-button[data-direction], .shoot-button[data-direction]');
 
             function hideControls() {
-                controls.classList.add('fade-out');
-                setTimeout(() => {
-                    controls.style.display = 'none';
-                }, 300);
+                if (controls.style.display !== 'none') {
+                    controls.classList.add('fade-out');
+                    setTimeout(() => {
+                        controls.style.display = 'none';
+                    }, 400); 
+                }
             }
 
             document.addEventListener('keydown', hideControls);
