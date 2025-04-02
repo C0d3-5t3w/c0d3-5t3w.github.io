@@ -108,9 +108,9 @@ const CONSTANTS: GameConstants = {
     HIGH_SCORE_FONT: '18px Arial',
     HIGH_SCORE_Y_START: 120,
     HIGH_SCORE_Y_SPACING: 30,
-    DPAD_SIZE: 150,
+    DPAD_SIZE: 100,
     DPAD_MARGIN: 20,
-    DPAD_BUTTON_SIZE: 40,
+    DPAD_BUTTON_SIZE: 20,
     RESTART_BUTTON_WIDTH: 120,
     RESTART_BUTTON_HEIGHT: 40,
     RESTART_BUTTON_MARGIN: 20,
@@ -606,7 +606,7 @@ class Znek {
             return;
         }
 
-        if (direction === 'shoot') {
+        if (direction === 'center') {
             this.shootBullet();
             return;
         }
