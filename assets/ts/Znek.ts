@@ -97,15 +97,15 @@ const CONSTANTS: GameConstants = {
     SNAKE_BODY_BASE_HUE: 25,
     SNAKE_BODY_SATURATION: 100,
     SNAKE_BODY_LIGHTNESS: 50,
-    SCORE_FONT: '20px Arial',
-    SCORE_COLOR: 'white',
-    SCORE_OUTLINE_COLOR: 'black',
-    SCORE_POSITION_X: 10,
-    SCORE_POSITION_Y: 30,
+    SCORE_FONT: '22px "Orbitron", sans-serif',
+    SCORE_COLOR: '#00ffff',
+    SCORE_OUTLINE_COLOR: 'rgba(0, 0, 20, 0.8)',
+    SCORE_POSITION_X: 20,
+    SCORE_POSITION_Y: 40,
     MAX_HIGH_SCORES: 5,
     DEATH_PAUSE: 30,
-    GAME_OVER_FONT: '24px Arial',
-    HIGH_SCORE_FONT: '18px Arial',
+    GAME_OVER_FONT: 'bold 32px "Orbitron", sans-serif',
+    HIGH_SCORE_FONT: '18px "Play", sans-serif',
     HIGH_SCORE_Y_START: 120,
     HIGH_SCORE_Y_SPACING: 30,
     DPAD_SIZE: 100,
@@ -125,7 +125,7 @@ const CONSTANTS: GameConstants = {
     GHOST_MIN_INTERVAL: 15000, 
     GHOST_MAX_INTERVAL: 40000, 
     GHOST_DURATION: 25000, 
-    BULLET_SIZE: 12,
+    BULLET_SIZE: 14,
     BULLET_COLOR: '#ff3333',
     BULLET_RANGE: 200,
 };
@@ -844,31 +844,48 @@ class Znek {
     private draw(): void {
         if (this.backgroundImg.complete) {
             this.ctx.drawImage(this.backgroundImg, 0, 0, this.canvas.width, this.canvas.height);
+            
+            this.drawGridPattern();
         } else {
             this.ctx.fillStyle = CONSTANTS.CANVAS_BACKGROUND;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
             this.backgroundImg.onload = () => this.draw();
         }
+
+        this.drawVignette();
         
         for (let i = this.snake.length - 1; i > 0; i--) {
             const segment = this.snake[i];
             this.ctx.save();
             
             const hue = (CONSTANTS.SNAKE_BODY_BASE_HUE + i * 15) % 360; 
+            const segmentSize = CONSTANTS.SNAKE_BODY_SIZE - (i > 5 ? 0 : (5-i) * 0.5);
+            
             this.ctx.fillStyle = `hsl(${hue}, ${CONSTANTS.SNAKE_BODY_SATURATION}%, ${CONSTANTS.SNAKE_BODY_LIGHTNESS}%)`;
+            this.ctx.shadowColor = `hsl(${hue}, ${CONSTANTS.SNAKE_BODY_SATURATION}%, ${CONSTANTS.SNAKE_BODY_LIGHTNESS + 20}%)`;
+            this.ctx.shadowBlur = 10;
             
             this.roundedRect(
-                segment.x, 
-                segment.y, 
-                CONSTANTS.SNAKE_BODY_SIZE, 
-                CONSTANTS.SNAKE_BODY_SIZE, 
-                4
+                segment.x + (CONSTANTS.SNAKE_BODY_SIZE - segmentSize) / 2, 
+                segment.y + (CONSTANTS.SNAKE_BODY_SIZE - segmentSize) / 2, 
+                segmentSize, 
+                segmentSize, 
+                Math.min(6, Math.max(3, i / 3))
             );
-            
-            this.ctx.shadowColor = `hsl(${hue}, ${CONSTANTS.SNAKE_BODY_SATURATION}%, ${CONSTANTS.SNAKE_BODY_LIGHTNESS + 20}%)`;
-            this.ctx.shadowBlur = 5;
             this.ctx.fill();
+            
+            this.ctx.fillStyle = `hsla(${hue}, ${CONSTANTS.SNAKE_BODY_SATURATION}%, ${CONSTANTS.SNAKE_BODY_LIGHTNESS + 30}%, 0.5)`;
+            this.ctx.beginPath();
+            this.ctx.arc(
+                segment.x + CONSTANTS.SNAKE_BODY_SIZE / 2,
+                segment.y + CONSTANTS.SNAKE_BODY_SIZE / 2,
+                segmentSize / 3,
+                0,
+                Math.PI * 2
+            );
+            this.ctx.fill();
+            
             this.ctx.restore();
         }
         
@@ -877,9 +894,24 @@ class Znek {
             this.ctx.save();
             
             this.ctx.shadowColor = 'rgba(255, 255, 255, 0.7)';
-            this.ctx.shadowBlur = 10;
+            this.ctx.shadowBlur = 15;
             
             const offsetX = (CONSTANTS.SNAKE_HEAD_SIZE - CONSTANTS.GRID_SIZE) / 2;
+            
+            const headCenterX = head.x + CONSTANTS.SNAKE_HEAD_SIZE / 2 - offsetX;
+            const headCenterY = head.y + CONSTANTS.SNAKE_HEAD_SIZE / 2 - offsetX;
+            
+            this.ctx.translate(headCenterX, headCenterY);
+            let rotation = 0;
+            switch(this.direction) {
+                case 'up': rotation = -Math.PI/2; break;
+                case 'down': rotation = Math.PI/2; break;
+                case 'left': rotation = Math.PI; break;
+                case 'right': rotation = 0; break;
+            }
+            this.ctx.rotate(rotation);
+            this.ctx.translate(-headCenterX, -headCenterY);
+            
             this.ctx.drawImage(
                 this.snakeImg, 
                 head.x - offsetX, 
@@ -887,28 +919,38 @@ class Znek {
                 CONSTANTS.SNAKE_HEAD_SIZE, 
                 CONSTANTS.SNAKE_HEAD_SIZE
             );
+            
             this.ctx.restore();
         }
 
         this.ctx.save();
         this.ctx.fillStyle = CONSTANTS.FOOD_COLOR;
         this.ctx.shadowColor = 'rgba(0, 255, 255, 0.8)';
-        this.ctx.shadowBlur = 10;
+        this.ctx.shadowBlur = 15;
+        
+        const regularFoodPulse = 1 + 0.07 * Math.sin(Date.now() / 300);
+        
         this.drawFish(
             this.food.x + CONSTANTS.FOOD_SIZE / 2, 
             this.food.y + CONSTANTS.FOOD_SIZE / 2, 
-            CONSTANTS.FOOD_SIZE
+            CONSTANTS.FOOD_SIZE * regularFoodPulse
         );
         this.ctx.restore();
         
         if (this.specialFood) {
-            const pulseFactor = 1 + 0.1 * Math.sin(Date.now() / 200);
+            const pulseFactor = 1 + 0.15 * Math.sin(Date.now() / 200);
             const actualSize = CONSTANTS.SPECIAL_FOOD_SIZE * pulseFactor;
             
             this.ctx.save();
             this.ctx.fillStyle = CONSTANTS.SPECIAL_FOOD_COLOR;
             this.ctx.shadowColor = 'rgba(255, 0, 255, 0.8)';
-            this.ctx.shadowBlur = 15;
+            this.ctx.shadowBlur = 20;
+            
+            this.drawSpecialFoodParticles(
+                this.specialFood.x + CONSTANTS.SPECIAL_FOOD_SIZE / 2,
+                this.specialFood.y + CONSTANTS.SPECIAL_FOOD_SIZE / 2,
+                CONSTANTS.SPECIAL_FOOD_SIZE
+            );
             
             this.drawFish(
                 this.specialFood.x + CONSTANTS.SPECIAL_FOOD_SIZE / 2, 
@@ -916,17 +958,20 @@ class Znek {
                 actualSize
             );
 
-            const timerWidth = CONSTANTS.SPECIAL_FOOD_SIZE * 1.2;
+            const timerWidth = CONSTANTS.SPECIAL_FOOD_SIZE * 1.5;
             const timerX = this.specialFood.x - (timerWidth - CONSTANTS.SPECIAL_FOOD_SIZE) / 2;
-            const timerY = this.specialFood.y - CONSTANTS.TIMER_MARGIN - CONSTANTS.TIMER_HEIGHT;
+            const timerY = this.specialFood.y - CONSTANTS.TIMER_MARGIN*2 - CONSTANTS.TIMER_HEIGHT;
             const percentLeft = this.specialFood.timeLeft / CONSTANTS.SPECIAL_FOOD_DURATION;
 
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT*1.5, CONSTANTS.TIMER_RADIUS);
             this.ctx.fill();
 
-            this.ctx.fillStyle = CONSTANTS.SPECIAL_FOOD_COLOR;
-            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            const gradient = this.ctx.createLinearGradient(timerX, timerY, timerX + timerWidth * percentLeft, timerY);
+            gradient.addColorStop(0, '#ff00ff');
+            gradient.addColorStop(1, '#aa00ff');
+            this.ctx.fillStyle = gradient;
+            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT*1.5, CONSTANTS.TIMER_RADIUS);
             this.ctx.fill();
 
             this.ctx.restore();
@@ -935,57 +980,41 @@ class Znek {
         this.ghosts.forEach(ghost => {
             this.ctx.save();
             
-            this.ctx.fillStyle = CONSTANTS.GHOST_COLOR;
-            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
-            this.ctx.shadowBlur = 20;  
-            this.ctx.shadowOffsetX = 0;
-            this.ctx.shadowOffsetY = 0;
-            
-            const pulseFactor = 1 + 0.15 * Math.sin(Date.now() / 150);  
+            const pulseFactor = 1 + 0.1 * Math.sin(Date.now() / 150);
             const pulseSize = CONSTANTS.GHOST_SIZE * pulseFactor;
-            const pulseRadius = pulseSize / 2;
             
-            this.ctx.beginPath();
-            this.ctx.arc(ghost.x + pulseRadius, ghost.y - pulseSize * 0.1, pulseRadius * 0.8, Math.PI, 0, true);
+            const ghostGradient = this.ctx.createRadialGradient(
+                ghost.x + CONSTANTS.GHOST_SIZE/2, ghost.y + CONSTANTS.GHOST_SIZE/2, 0,
+                ghost.x + CONSTANTS.GHOST_SIZE/2, ghost.y + CONSTANTS.GHOST_SIZE/2, CONSTANTS.GHOST_SIZE
+            );
+            ghostGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+            ghostGradient.addColorStop(0.7, 'rgba(200, 220, 255, 0.9)');
+            ghostGradient.addColorStop(1, 'rgba(150, 180, 255, 0.8)');
             
-            const bottom = ghost.y + pulseRadius * 0.5;
-            const step = pulseRadius / 3;
+            this.ctx.fillStyle = ghostGradient;
+            this.ctx.shadowColor = 'rgba(100, 150, 255, 0.8)';
+            this.ctx.shadowBlur = 20;
             
-            this.ctx.lineTo(ghost.x + pulseRadius * 0.8, bottom - step);
-            this.ctx.lineTo(ghost.x + pulseRadius * 0.5, bottom);
-            this.ctx.lineTo(ghost.x + pulseRadius * 0.2, bottom - step);
-            this.ctx.lineTo(ghost.x - pulseRadius * 0.2, bottom);
-            this.ctx.lineTo(ghost.x - pulseRadius * 0.5, bottom - step);
-            this.ctx.lineTo(ghost.x - pulseRadius * 0.8, bottom);
+            this.drawGhost(
+                ghost.x + CONSTANTS.GHOST_SIZE / 2,
+                ghost.y + CONSTANTS.GHOST_SIZE / 2,
+                pulseSize
+            );
             
-            this.ctx.closePath();
-            this.ctx.fill();
-            
-            this.ctx.strokeStyle = 'rgba(100, 100, 255, 0.8)';
-            this.ctx.lineWidth = 2;
-            this.ctx.stroke();
-            
-            this.ctx.shadowBlur = 0; 
-            this.ctx.fillStyle = 'black';
-            this.ctx.beginPath();
-            this.ctx.arc(ghost.x - pulseRadius * 0.3, ghost.y - pulseRadius * 0.2, pulseRadius * 0.15, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            this.ctx.beginPath();
-            this.ctx.arc(ghost.x + pulseRadius * 0.3, ghost.y - pulseRadius * 0.2, pulseRadius * 0.15, 0, Math.PI * 2);
-            this.ctx.fill();
-            
-            const timerWidth = CONSTANTS.GHOST_SIZE * 1.2;
+            const timerWidth = CONSTANTS.GHOST_SIZE * 1.5;
             const timerX = ghost.x - (timerWidth - CONSTANTS.GHOST_SIZE) / 2;
-            const timerY = ghost.y - CONSTANTS.TIMER_MARGIN - CONSTANTS.TIMER_HEIGHT;
+            const timerY = ghost.y - CONSTANTS.TIMER_MARGIN*2 - CONSTANTS.TIMER_HEIGHT;
             const percentLeft = ghost.timeLeft / CONSTANTS.GHOST_DURATION;
             
-            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            this.ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            this.roundedRect(timerX, timerY, timerWidth, CONSTANTS.TIMER_HEIGHT*1.5, CONSTANTS.TIMER_RADIUS);
             this.ctx.fill();
             
-            this.ctx.fillStyle = CONSTANTS.GHOST_COLOR;
-            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT, CONSTANTS.TIMER_RADIUS);
+            const ghostTimerGradient = this.ctx.createLinearGradient(timerX, timerY, timerX + timerWidth * percentLeft, timerY);
+            ghostTimerGradient.addColorStop(0, '#80b0ff');
+            ghostTimerGradient.addColorStop(1, '#3060ff');
+            this.ctx.fillStyle = ghostTimerGradient;
+            this.roundedRect(timerX, timerY, timerWidth * percentLeft, CONSTANTS.TIMER_HEIGHT*1.5, CONSTANTS.TIMER_RADIUS);
             this.ctx.fill();
             
             this.ctx.restore();
@@ -993,9 +1022,23 @@ class Znek {
 
         this.bullets.forEach(bullet => {
             this.ctx.save();
-            this.ctx.fillStyle = CONSTANTS.BULLET_COLOR;
-            this.ctx.shadowColor = 'rgba(255, 100, 100, 0.8)';
-            this.ctx.shadowBlur = 10;
+            
+            const bulletGradient = this.ctx.createRadialGradient(
+                bullet.x + CONSTANTS.BULLET_SIZE / 2,
+                bullet.y + CONSTANTS.BULLET_SIZE / 2, 
+                0,
+                bullet.x + CONSTANTS.BULLET_SIZE / 2,
+                bullet.y + CONSTANTS.BULLET_SIZE / 2,
+                CONSTANTS.BULLET_SIZE / 2
+            );
+            bulletGradient.addColorStop(0, '#ffaa99');
+            bulletGradient.addColorStop(0.7, '#ff5533');
+            bulletGradient.addColorStop(1, '#cc3322');
+            
+            this.ctx.fillStyle = bulletGradient;
+            this.ctx.shadowColor = 'rgba(255, 100, 50, 0.8)';
+            this.ctx.shadowBlur = 15;
+            
             this.ctx.beginPath();
             this.ctx.arc(
                 bullet.x + CONSTANTS.BULLET_SIZE / 2,
@@ -1005,78 +1048,207 @@ class Znek {
                 Math.PI * 2
             );
             this.ctx.fill();
+            
+            let trailX = bullet.x + CONSTANTS.BULLET_SIZE / 2;
+            let trailY = bullet.y + CONSTANTS.BULLET_SIZE / 2;
+            let trailLength = CONSTANTS.BULLET_SIZE * 2;
+            
+            switch(bullet.direction) {
+                case 'up': trailY += trailLength; break;
+                case 'down': trailY -= trailLength; break;
+                case 'left': trailX += trailLength; break;
+                case 'right': trailX -= trailLength; break;
+            }
+            
+            const trailGradient = this.ctx.createLinearGradient(
+                bullet.x + CONSTANTS.BULLET_SIZE / 2,
+                bullet.y + CONSTANTS.BULLET_SIZE / 2,
+                trailX,
+                trailY
+            );
+            trailGradient.addColorStop(0, 'rgba(255, 100, 50, 0.7)');
+            trailGradient.addColorStop(1, 'rgba(255, 100, 50, 0)');
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(bullet.x + CONSTANTS.BULLET_SIZE / 2, bullet.y + CONSTANTS.BULLET_SIZE / 2);
+            this.ctx.lineTo(trailX, trailY);
+            this.ctx.lineWidth = CONSTANTS.BULLET_SIZE / 1.5;
+            this.ctx.strokeStyle = trailGradient;
+            this.ctx.lineCap = 'round';
+            this.ctx.stroke();
+            
             this.ctx.restore();
         });
 
         if (this.showNotification) {
             this.ctx.save();
-            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
-            this.ctx.font = 'bold 24px Arial';
+            
+            const notificationY = 60;
+            const fontSize = 26;
+            const text = 'TAIL EATING POWER ACTIVATED!';
+            
+            this.ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            this.ctx.shadowBlur = 10;
+            this.ctx.shadowOffsetX = 2;
+            this.ctx.shadowOffsetY = 2;
+            
+            this.ctx.font = `bold ${fontSize}px "Orbitron", sans-serif`;
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(
-                'TAIL EATING POWER ACTIVATED!',
-                this.canvas.width / 2,
-                60
+            
+            const gradient = this.ctx.createLinearGradient(
+                0, notificationY - fontSize,
+                0, notificationY
             );
+            gradient.addColorStop(0, '#ffff00');
+            gradient.addColorStop(0.5, '#ffcc00');
+            gradient.addColorStop(1, '#ff9900');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.fillText(text, this.canvas.width / 2, notificationY);
+            
+            this.ctx.shadowColor = 'rgba(255, 255, 0, 0.5)';
+            this.ctx.shadowBlur = 15;
+            this.ctx.shadowOffsetX = 0;
+            this.ctx.shadowOffsetY = 0;
+            this.ctx.fillText(text, this.canvas.width / 2, notificationY);
+            
             this.ctx.restore();
         }
         
         if (this.hasTailEatingPower) {
             this.ctx.save();
-            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.3)';
-            const barWidth = 100;
-            const barHeight = 10;
-            const barX = this.canvas.width - barWidth - 10;
-            const barY = 10;
-            this.roundedRect(barX, barY, barWidth, barHeight, 5);
+            
+            const barWidth = 150;
+            const barHeight = 15;
+            const barX = this.canvas.width - barWidth - 20;
+            const barY = 15;
+            const percentLeft = this.tailEatingTimeLeft / CONSTANTS.TAIL_EATING_DURATION;
+            
+            this.ctx.fillStyle = 'rgba(50, 50, 50, 0.5)';
+            this.roundedRect(barX, barY, barWidth, barHeight, 7);
             this.ctx.fill();
             
-            this.ctx.fillStyle = 'rgba(255, 255, 0, 0.7)';
-            const percentLeft = this.tailEatingTimeLeft / CONSTANTS.TAIL_EATING_DURATION;
-            this.roundedRect(barX, barY, barWidth * percentLeft, barHeight, 5);
+            const powerGradient = this.ctx.createLinearGradient(barX, barY, barX + barWidth, barY);
+            powerGradient.addColorStop(0, '#ffff00');
+            powerGradient.addColorStop(0.5, '#ffcc00');
+            powerGradient.addColorStop(1, '#ff9900');
+            
+            this.ctx.fillStyle = powerGradient;
+            this.roundedRect(barX, barY, barWidth * percentLeft, barHeight, 7);
             this.ctx.fill();
+            
+            this.ctx.font = '12px "Play", sans-serif';
+            this.ctx.fillStyle = '#ffffff';
+            this.ctx.textAlign = 'left';
+            this.ctx.fillText('TAIL EATING POWER', barX, barY - 5);
+            
+            this.ctx.shadowColor = 'rgba(255, 255, 0, 0.5)';
+            this.ctx.shadowBlur = 10;
+            this.ctx.strokeStyle = 'rgba(255, 255, 0, 0.7)';
+            this.ctx.lineWidth = 1;
+            this.roundedRect(barX, barY, barWidth, barHeight, 7);
+            this.ctx.stroke();
+            
             this.ctx.restore();
         }
 
-        this.ctx.fillStyle = CONSTANTS.SCORE_OUTLINE_COLOR;
-        this.ctx.font = CONSTANTS.SCORE_FONT;
-        this.ctx.fillText(
-            `Score: ${this.score}`, 
-            CONSTANTS.SCORE_POSITION_X + 1, 
-            CONSTANTS.SCORE_POSITION_Y + 1
-        );
+        this.ctx.save();
         
-        this.ctx.fillStyle = CONSTANTS.SCORE_COLOR;
+        this.ctx.font = CONSTANTS.SCORE_FONT;
+        this.ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+        this.ctx.shadowBlur = 5;
+        this.ctx.shadowOffsetX = 2;
+        this.ctx.shadowOffsetY = 2;
+        this.ctx.fillStyle = CONSTANTS.SCORE_OUTLINE_COLOR;
         this.ctx.fillText(
-            `Score: ${this.score}`, 
+            `SCORE: ${this.score}`, 
             CONSTANTS.SCORE_POSITION_X, 
             CONSTANTS.SCORE_POSITION_Y
         );
+        
+        this.ctx.shadowColor = 'rgba(0, 255, 255, 0.5)';
+        this.ctx.shadowBlur = 10;
+        this.ctx.shadowOffsetX = 0;
+        this.ctx.shadowOffsetY = 0;
+        this.ctx.fillStyle = CONSTANTS.SCORE_COLOR;
+        this.ctx.fillText(
+            `SCORE: ${this.score}`, 
+            CONSTANTS.SCORE_POSITION_X, 
+            CONSTANTS.SCORE_POSITION_Y
+        );
+        
+        this.ctx.restore();
 
         if (this.gameOver) {
             this.ctx.save();
-            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            
+            const overlay = this.ctx.createRadialGradient(
+                this.canvas.width/2, this.canvas.height/2, 0,
+                this.canvas.width/2, this.canvas.height/2, this.canvas.width
+            );
+            overlay.addColorStop(0, 'rgba(0, 0, 0, 0.7)');
+            overlay.addColorStop(0.5, 'rgba(0, 0, 0, 0.8)');
+            overlay.addColorStop(1, 'rgba(0, 0, 0, 0.95)');
+            
+            this.ctx.fillStyle = overlay;
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
             this.ctx.font = CONSTANTS.GAME_OVER_FONT;
-            this.ctx.fillStyle = 'white';
             this.ctx.textAlign = 'center';
+            this.ctx.shadowColor = 'rgba(255, 0, 0, 0.5)';
+            this.ctx.shadowBlur = 15;
             
-            const gameOverText = `Game Over! Score: ${this.score}`;
+            const gameOverGradient = this.ctx.createLinearGradient(
+                0, 70,
+                0, 90
+            );
+            gameOverGradient.addColorStop(0, '#ffffff');
+            gameOverGradient.addColorStop(0.5, '#ffaaaa');
+            gameOverGradient.addColorStop(1, '#ff5555');
+            
+            this.ctx.fillStyle = gameOverGradient;
+            const gameOverText = `GAME OVER`;
             this.ctx.fillText(gameOverText, this.canvas.width / 2, 80);
             
-            this.ctx.font = CONSTANTS.HIGH_SCORE_FONT;
-            this.ctx.fillStyle = '#FFD700'; 
-            this.ctx.fillText('High Scores:', this.canvas.width / 2, CONSTANTS.HIGH_SCORE_Y_START - CONSTANTS.HIGH_SCORE_Y_SPACING);
+            this.ctx.font = '24px "Play", sans-serif';
+            this.ctx.shadowColor = 'rgba(0, 255, 255, 0.5)';
+            this.ctx.fillStyle = '#00ffff';
+            this.ctx.fillText(`FINAL SCORE: ${this.score}`, this.canvas.width / 2, 120);
             
-            this.ctx.fillStyle = 'white'; 
+            this.ctx.font = '22px "Orbitron", sans-serif';
+            this.ctx.fillStyle = '#FFD700'; 
+            this.ctx.shadowColor = 'rgba(255, 215, 0, 0.5)';
+            this.ctx.fillText('HIGH SCORES', this.canvas.width / 2, CONSTANTS.HIGH_SCORE_Y_START - CONSTANTS.HIGH_SCORE_Y_SPACING);
+            
+            this.ctx.beginPath();
+            this.ctx.moveTo(this.canvas.width/2 - 120, CONSTANTS.HIGH_SCORE_Y_START - CONSTANTS.HIGH_SCORE_Y_SPACING + 10);
+            this.ctx.lineTo(this.canvas.width/2 + 120, CONSTANTS.HIGH_SCORE_Y_START - CONSTANTS.HIGH_SCORE_Y_SPACING + 10);
+            this.ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)';
+            this.ctx.lineWidth = 2;
+            this.ctx.stroke();
+            
+            this.ctx.shadowColor = 'rgba(255, 255, 255, 0.3)';
+            this.ctx.shadowBlur = 5;
             this.highScores.forEach((score, i) => {
                 if (score === this.score && this.deathTimer < CONSTANTS.DEATH_PAUSE * 2) {
                     const pulse = Math.sin(this.deathTimer * 0.1) * 0.5 + 0.5;
-                    this.ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + pulse * 0.5})`; 
-                    this.ctx.font = 'bold ' + CONSTANTS.HIGH_SCORE_FONT; 
+                    this.ctx.fillStyle = `rgba(255, 215, 0, ${0.7 + pulse * 0.3})`; 
+                    this.ctx.font = 'bold ' + CONSTANTS.HIGH_SCORE_FONT;
+                    
+                    this.ctx.save();
+                    this.ctx.strokeStyle = `rgba(255, 215, 0, ${0.3 + pulse * 0.3})`;
+                    this.ctx.lineWidth = 2;
+                    this.roundedRect(
+                        this.canvas.width/2 - 80, 
+                        CONSTANTS.HIGH_SCORE_Y_START + (i * CONSTANTS.HIGH_SCORE_Y_SPACING) - 22,
+                        160,
+                        30,
+                        5
+                    );
+                    this.ctx.stroke();
+                    this.ctx.restore();
                 } else {
-                    this.ctx.fillStyle = 'white';
+                    this.ctx.fillStyle = i === 0 ? '#ffd700' : i === 1 ? '#c0c0c0' : i === 2 ? '#cd7f32' : 'white';
                     this.ctx.font = CONSTANTS.HIGH_SCORE_FONT;
                 }
                 
@@ -1089,34 +1261,118 @@ class Znek {
             
             if (this.canReset) {
                 this.ctx.save();
-                this.ctx.font = 'bold 26px Arial';
-                this.ctx.fillStyle = `rgba(255, 255, 255, ${0.7 + 0.3 * Math.sin(this.deathTimer * 0.1)})`;
+                this.ctx.font = 'bold 26px "Play", sans-serif';
+                
+                const pulseOpacity = 0.7 + 0.3 * Math.sin(this.deathTimer * 0.1);
+                const pulseScale = 1 + 0.03 * Math.sin(this.deathTimer * 0.1);
+                
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${pulseOpacity})`;
                 this.ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
                 this.ctx.shadowBlur = 5;
-                const resetText = 'Press ANY KEY or D-PAD to restart';
-                this.ctx.fillText(
-                    resetText, 
-                    this.canvas.width / 2, 
-                    this.canvas.height - 50
-                );
+                this.ctx.translate(this.canvas.width / 2, this.canvas.height - 50);
+                this.ctx.scale(pulseScale, pulseScale);
+                this.ctx.fillText('PRESS ANY KEY OR D-PAD TO RESTART', 0, 0);
                 this.ctx.restore();
             }
             
             this.ctx.restore();
         } else if (!this.gameStarted) {
             this.ctx.save();
-            this.ctx.font = '24px Arial';
-            this.ctx.fillStyle = 'white';
+            
+            this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            const pulse = 0.7 + 0.3 * Math.sin(Date.now() * 0.003);
+            const scale = 1 + 0.05 * Math.sin(Date.now() * 0.003);
+            
+            this.ctx.font = '28px "Orbitron", sans-serif';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(
-                'Press arrow keys or use D-pad to start', 
-                this.canvas.width / 2, 
-                this.canvas.height / 2
+            this.ctx.shadowColor = 'rgba(0, 200, 255, 0.8)';
+            this.ctx.shadowBlur = 15 * pulse;
+            
+            const gradient = this.ctx.createLinearGradient(
+                0, this.canvas.height/2 - 15, 
+                0, this.canvas.height/2 + 15
             );
+            gradient.addColorStop(0, '#ffffff');
+            gradient.addColorStop(0.5, '#88ccff');
+            gradient.addColorStop(1, '#00aaff');
+            
+            this.ctx.fillStyle = gradient;
+            this.ctx.save();
+            this.ctx.translate(this.canvas.width/2, this.canvas.height/2);
+            this.ctx.scale(scale, scale);
+            this.ctx.fillText('PRESS ARROW KEYS OR D-PAD TO START', 0, 0);
+            this.ctx.restore();
+            
             this.ctx.restore();
         }
     }
+
+    private drawVignette(): void {
+        const gradient = this.ctx.createRadialGradient(
+            this.canvas.width/2, this.canvas.height/2, this.canvas.height/3,
+            this.canvas.width/2, this.canvas.height/2, this.canvas.height
+        );
+        gradient.addColorStop(0, 'rgba(0,0,0,0)');
+        gradient.addColorStop(1, 'rgba(0,0,0,0.4)');
+        
+        this.ctx.save();
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.restore();
+    }
     
+    private drawGridPattern(): void {
+        this.ctx.save();
+        this.ctx.strokeStyle = 'rgba(50, 120, 150, 0.1)';
+        this.ctx.lineWidth = 1;
+        
+        const gridSize = 20;
+        
+        for (let x = 0; x <= this.canvas.width; x += gridSize) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(x, 0);
+            this.ctx.lineTo(x, this.canvas.height);
+            this.ctx.stroke();
+        }
+        
+        for (let y = 0; y <= this.canvas.height; y += gridSize) {
+            this.ctx.beginPath();
+            this.ctx.moveTo(0, y);
+            this.ctx.lineTo(this.canvas.width, y);
+            this.ctx.stroke();
+        }
+        
+        this.ctx.restore();
+    }
+    
+    private drawSpecialFoodParticles(x: number, y: number, size: number): void {
+        const particleCount = 5;
+        const time = Date.now();
+        
+        this.ctx.save();
+        
+        for (let i = 0; i < particleCount; i++) {
+            const angle = (time / 500 + i * (Math.PI * 2 / particleCount)) % (Math.PI * 2);
+            const distance = size * (0.8 + 0.3 * Math.sin(time / 200 + i));
+            const pX = x + Math.cos(angle) * distance;
+            const pY = y + Math.sin(angle) * distance;
+            const pSize = size * 0.2 * (0.7 + 0.3 * Math.sin(time / 300 + i * 2));
+            
+            const particleGradient = this.ctx.createRadialGradient(pX, pY, 0, pX, pY, pSize);
+            particleGradient.addColorStop(0, 'rgba(255, 200, 255, 0.9)');
+            particleGradient.addColorStop(1, 'rgba(255, 0, 255, 0)');
+            
+            this.ctx.fillStyle = particleGradient;
+            this.ctx.beginPath();
+            this.ctx.arc(pX, pY, pSize, 0, Math.PI * 2);
+            this.ctx.fill();
+        }
+        
+        this.ctx.restore();
+    }
+
     private roundedRect(x: number, y: number, width: number, height: number, radius: number): void {
         this.ctx.beginPath();
         this.ctx.moveTo(x + radius, y);
