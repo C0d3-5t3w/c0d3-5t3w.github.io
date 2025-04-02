@@ -606,7 +606,7 @@ class Znek {
             return;
         }
 
-        if (direction === 'center') {
+        if (direction === 'shoot') {
             this.shootBullet();
             return;
         }
