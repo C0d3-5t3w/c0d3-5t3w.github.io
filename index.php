@@ -243,7 +243,7 @@ $random_quote = $quotes[array_rand($quotes)];
                 C0D3-5T3W
             </h1>
             <h2>
-                Welcome!
+                W3LC0M3!
             </h2>
             <h3>
             <div class="date-time">
