@@ -1,9 +1,13 @@
+# /pages/test.php
+# /pages/test.html
 /pages/balloons.php
 /pages/balloons.html
 /pages/particles.php
 /pages/particles.html
 /assets/ts/balloons.ts
+/assets/js/balloons.js
 /assets/ts/particles.ts
 /assets/js/particles.js
-/assets/js/balloons.js
-# :)
+# /assets/ts/boson.ts
+# /assets/js/boson.js
+# <3
