@@ -12,12 +12,15 @@
         <div class="container">
             <header>
                 <h1>Test Header</h1>
+                <p>☆</p>
             </header>
             <section>
                 <h2>Test Section</h2>
+                <p>☠︎</p>
             </section>
             <footer>
                 <h3>Test Footer</h3>
+                <p>❤︎</p>
             </footer>
         </div>
     </div>
