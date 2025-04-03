@@ -49,7 +49,7 @@ class PageSiteMapDropdown {
             // { text: '🎈 Balloons', url: 'balloons.html' },
             // { text: '✨ Particles', url: 'particles.html' },
             { text: '😸 FlappyZig', url: 'FlappyZig.html' },
-            { text: '🐍 Znek', url: 'znek.html' }
+            { text: '🐍 Znek', url: 'znek.html' },
             { text: 'Test', url: 'test.html' },
         ];
 
