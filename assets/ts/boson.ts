@@ -339,7 +339,7 @@ document.addEventListener("DOMContentLoaded", function() {
             this.createFieldDisturbance(e.clientX, e.clientY);
         }
         
-        handleKeyDown(e: KeyEvent): void {
+        handleKeyDown(e: KeyboardEvent): void {
             if (e.key === 'f' || e.key === 'F') {
                 this.showMouseField = !this.showMouseField;
             }
