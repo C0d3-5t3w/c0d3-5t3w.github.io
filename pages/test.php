@@ -24,9 +24,10 @@
             </footer>
         </div>
     </div>
-    <script src="../assets/js/dropdown.js"></script>
+    <!-- <script src="../assets/js/dropdown.js"></script> -->
     <script src="../assets/js/altdropdown.js"></script>
-    <script src="../assets/js/main.js"></script>
-    <script src="../assets/js/alt.js"></script>
+    <!-- <script src="../assets/js/main.js"></script> -->
+    <!-- <script src="../assets/js/alt.js"></script> -->
+    <script src="../assets/js/boson.js"></script>
 </body>
 </html>
