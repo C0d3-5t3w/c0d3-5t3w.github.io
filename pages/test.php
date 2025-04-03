@@ -11,18 +11,18 @@
     <div id="page-wrapper">
         <div class="container">
             <header>
-                <h1>Test Page</h1>
+                <h1>Test Header</h1>
             </header>
             <section>
                 <h2>Test Section</h2>
-                <p>This is a test page.</p>
             </section>
             <footer>
-                <h3>!Test Page!</h3>
+                <h3>Test Footer</h3>
             </footer>
         </div>
     </div>
-    <script src='https://www.onlinegames.io/games/2023/q2/capybara-clicker-pro/index.html'></script>
     <script src="../assets/js/altdropdown.js"></script>
+    <script src="../assets/js/main.js"></script>
+    <script src="../assets/js/alt.js"></script>
 </body>
 </html>
