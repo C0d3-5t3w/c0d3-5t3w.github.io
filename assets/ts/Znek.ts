@@ -987,12 +987,12 @@ class Znek {
                 ghost.x + CONSTANTS.GHOST_SIZE/2, ghost.y + CONSTANTS.GHOST_SIZE/2, 0,
                 ghost.x + CONSTANTS.GHOST_SIZE/2, ghost.y + CONSTANTS.GHOST_SIZE/2, CONSTANTS.GHOST_SIZE
             );
-            ghostGradient.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
-            ghostGradient.addColorStop(0.7, 'rgba(200, 220, 255, 0.9)');
-            ghostGradient.addColorStop(1, 'rgba(150, 180, 255, 0.8)');
+            ghostGradient.addColorStop(0, 'rgba(239, 86, 232, 0.95)');
+            ghostGradient.addColorStop(0.7, 'rgba(155, 67, 249, 0.9)');
+            ghostGradient.addColorStop(1, 'rgba(138, 36, 247, 0.85)');
             
             this.ctx.fillStyle = ghostGradient;
-            this.ctx.shadowColor = 'rgba(100, 150, 255, 0.8)';
+            this.ctx.shadowColor = 'rgba(245, 0, 208, 0.89)';
             this.ctx.shadowBlur = 20;
             
             this.drawGhost(
