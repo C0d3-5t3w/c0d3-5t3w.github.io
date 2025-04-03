@@ -14,6 +14,10 @@ document.addEventListener("DOMContentLoaded", function() {
         isWaveMode: boolean;
         probabilityField: number;
         tunnelProbability: number;
+        canPush: boolean = true;
+        pushFactor: number = 0.5;
+        pushRecoveryTime: number = 500;
+        lastPushed: number = 0;
         
         constructor(x: number, y: number) {
             this.x = x;
@@ -43,6 +47,10 @@ document.addEventListener("DOMContentLoaded", function() {
             this.phase += 0.05;
             if (Math.random() < 0.01) {
                 this.isWaveMode = !this.isWaveMode;
+            }
+            
+            if (!this.canPush && performance.now() - this.lastPushed > this.pushRecoveryTime) {
+                this.canPush = true;
             }
             
             if (this.entangledWith && Math.random() < 0.2) {
@@ -171,8 +179,19 @@ document.addEventListener("DOMContentLoaded", function() {
                 currentRadius += waveOffset;
             }
             
+            let opacity = this.canPush ? 0.7 : 0.9;
+            let color = this.color;
+            
+            if (!this.canPush) {
+                const timeSincePush = performance.now() - this.lastPushed;
+                const pushProgress = Math.min(timeSincePush / this.pushRecoveryTime, 1);
+                if (pushProgress < 0.3) {
+                    color = 'rgba(255, 32, 32, 0.8)';
+                }
+            }
+            
             ctx.arc(this.x, this.y, currentRadius, 0, Math.PI * 2);
-            ctx.fillStyle = this.color;
+            ctx.fillStyle = color;
             ctx.fill();
             
             const gradient = ctx.createRadialGradient(
@@ -299,11 +318,82 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         handleMouseMove(e: MouseEvent): void {
+            const prevMouseX = this.mouseX;
+            const prevMouseY = this.mouseY;
+            
             this.mouseVelocityX = e.clientX - this.mouseX;
             this.mouseVelocityY = e.clientY - this.mouseY;
             
             this.mouseX = e.clientX;
             this.mouseY = e.clientY;
+            
+            const mouseSpeed = Math.sqrt(
+                this.mouseVelocityX * this.mouseVelocityX + 
+                this.mouseVelocityY * this.mouseVelocityY
+            );
+            
+            if (mouseSpeed > 3) {
+                const mouseAngle = Math.atan2(this.mouseVelocityY, this.mouseVelocityX);
+                
+                for (const boson of this.bosons) {
+                    if (!boson.canPush) continue;
+                    
+                    const dx = boson.x - this.mouseX;
+                    const dy = boson.y - this.mouseY;
+                    const distanceToMouse = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distanceToMouse < this.mouseRadius * 0.6) {
+                        const pushStrength = mouseSpeed * boson.pushFactor / boson.mass;
+                        
+                        boson.vx += Math.cos(mouseAngle) * pushStrength;
+                        boson.vy += Math.sin(mouseAngle) * pushStrength;
+                        
+                        boson.canPush = false;
+                        boson.lastPushed = performance.now();
+                        
+                        if (Math.random() < 0.1) {
+                            boson.energyState = Math.floor(Math.random() * 5);
+                            const colors = [
+                                'rgba(0, 255, 255, 0.7)',
+                                'rgba(255, 0, 255, 0.7)',
+                                'rgba(255, 255, 0, 0.7)',
+                                'rgba(0, 255, 0, 0.7)',
+                                'rgba(255, 165, 0, 0.7)'
+                            ];
+                            boson.color = colors[boson.energyState];
+                        }
+                    }
+                }
+                
+                if (mouseSpeed > 10 && this.showMouseField) {
+                    this.createMouseTrail(prevMouseX, prevMouseY, this.mouseX, this.mouseY);
+                }
+            }
+        }
+        
+        createMouseTrail(startX: number, startY: number, endX: number, endY: number): void {
+            const trailDuration = 300;
+            const startTime = performance.now();
+            
+            const animateTrail = (timestamp: number) => {
+                const elapsed = timestamp - startTime;
+                const progress = Math.min(elapsed / trailDuration, 1);
+                
+                const opacity = 0.4 * (1 - progress);
+                
+                this.ctx.beginPath();
+                this.ctx.moveTo(startX, startY);
+                this.ctx.lineTo(endX, endY);
+                this.ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+                this.ctx.lineWidth = 2 * (1 - progress);
+                this.ctx.stroke();
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateTrail);
+                }
+            };
+            
+            requestAnimationFrame(animateTrail);
         }
         
         handleClick(e: MouseEvent): void {
