@@ -8,8 +8,8 @@
     <link rel="stylesheet" href="../assets/css/alt.css">
 </head>
 <body>
-    <div id="page-wrapper">
-        <div class="container">
+    <div class="content">
+        <div class="content">
             <header>
                 <h1>Test Header</h1>
                 <p>☆</p>
