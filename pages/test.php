@@ -1,3 +1,11 @@
+<?php
+header("Cache-Control: no-cache, must-revalidate");
+header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
+header('Content-Type: text/css');
+header('Content-Type: application/javascript');
+/* header('Content-Type: application/pdf'); */
+/* echo file_get_contents('filename.pdf'); */
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
