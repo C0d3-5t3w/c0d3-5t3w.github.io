@@ -98,6 +98,5 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 
     <script src="../assets/js/test.js"></script>
     <script src="../assets/js/boson.js"></script>
-    <script src="../assets/js/boson-init.js"></script>
 </body>
 </html>

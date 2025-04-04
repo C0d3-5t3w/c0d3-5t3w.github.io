@@ -236,7 +236,7 @@ footer {
   p {
     margin-bottom: 0;
     font-size: 0.9rem;
-    color: color.adjust($text-color, $opacity: -0.3);
+    color: color.adjust($text-color, $alpha: -0.3);
   }
 }
 
