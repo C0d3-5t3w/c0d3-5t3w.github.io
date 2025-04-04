@@ -34,23 +34,21 @@ body {
   line-height: 1.6;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: $font-heading;
-  margin-bottom: 1rem;
-  
-  &::after {
-    content: '';
-    display: block;
-    width: 50px;
-    height: 3px;
-    background-color: $primary-color;
-    margin-top: 0.5rem;
-  }
+h1, h2, h3 {
+  margin: 20px 0;
+  padding: 10px;
+  border: 1px solid var(--primary-color);
+  text-size-adjust: inherit;
+  text-align: center;
+  text-rendering: auto;
+  color: var(--primary-color);
+  width: 100%;
+  position: relative;
 }
 
-h1 { font-size: 2.5rem; }
-h2 { font-size: 2rem; }
-h3 { font-size: 1.75rem; }
+h1 { background-color: var(--accent-red); }
+h2 { background-color: var(--accent-teal); }
+h3 { background-color: var(--accent-purple); }
 
 p {
   margin-bottom: 1.5rem;
