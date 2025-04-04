@@ -3,8 +3,6 @@ header("Cache-Control: no-cache, must-revalidate");
 header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 header('Content-Type: text/css');
 header('Content-Type: application/javascript');
-/* header('Content-Type: application/pdf'); */
-/* echo file_get_contents('filename.pdf'); */
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -12,8 +10,9 @@ header('Content-Type: application/javascript');
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Page</title>
-    <link rel="stylesheet" href="../assets/css/main.css">
-    <link rel="stylesheet" href="../assets/css/alt.css">
+    <!-- <link rel="stylesheet" href="../assets/css/main.css"> -->
+    <!-- <link rel="stylesheet" href="../assets/css/alt.css"> -->
+    <link rel="stylesheet" href="../assets/css/test.css">
 </head>
 <body>
     <div class="content">
@@ -36,6 +35,7 @@ header('Content-Type: application/javascript');
     <script src="../assets/js/altdropdown.js"></script>
     <!-- <script src="../assets/js/main.js"></script> -->
     <!-- <script src="../assets/js/alt.js"></script> -->
+    <script src="../assets/js/test.js"></script>
     <script src="../assets/js/boson.js"></script>
 </body>
 </html>

@@ -18,6 +18,13 @@ document.addEventListener("DOMContentLoaded", function() {
         pushFactor: number = 0.5;
         pushRecoveryTime: number = 500;
         lastPushed: number = 0;
+        spin: number = 0;
+        glowIntensity: number = 1.0;
+        lifetime: number = 0;
+        isExcited: boolean = false;
+        excitementLevel: number = 0;
+        trail: {x: number, y: number, age: number}[] = [];
+        maxTrailLength: number = 10;
         
         constructor(x: number, y: number) {
             this.x = x;
@@ -41,10 +48,30 @@ document.addEventListener("DOMContentLoaded", function() {
                 'rgba(255, 165, 0, 0.7)'
             ];
             this.color = colors[this.energyState];
+            
+            this.spin = (Math.random() - 0.5) * 0.2;
         }
         
-        update(dt: number, bosons: Boson[], mouseX: number, mouseY: number): void {
+        update(dt: number, bosons: Boson[], mouseX: number, mouseY: number, mouseMode: string = 'repel'): void {
             this.phase += 0.05;
+            this.lifetime += dt;
+            
+            const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy);
+            if (speed > 3) {
+                if (this.trail.length > this.maxTrailLength) {
+                    this.trail.shift();
+                }
+                this.trail.push({x: this.x, y: this.y, age: 0});
+            }
+            
+            for (let i = 0; i < this.trail.length; i++) {
+                this.trail[i].age += dt;
+                if (this.trail[i].age > 500) {
+                    this.trail.splice(i, 1);
+                    i--;
+                }
+            }
+            
             if (Math.random() < 0.01) {
                 this.isWaveMode = !this.isWaveMode;
             }
@@ -71,6 +98,8 @@ document.addEventListener("DOMContentLoaded", function() {
                 
                 if (Math.random() < this.tunnelProbability) {
                     this.color = 'rgba(255, 255, 255, 0.9)'; 
+                    this.isExcited = true;
+                    this.excitementLevel = 1.0;
                     setTimeout(() => {
                         const colors = [
                             'rgba(0, 255, 255, 0.7)',
@@ -80,17 +109,26 @@ document.addEventListener("DOMContentLoaded", function() {
                             'rgba(255, 165, 0, 0.7)'
                         ];
                         this.color = colors[this.energyState];
+                        this.isExcited = false;
                     }, 100);
                 } else {
                     const angleToMouse = Math.atan2(dyMouse, dxMouse);
                     const repelStrength = mouseFactor * (0.8 / this.mass);
                     
-                    if (distanceToMouse < 50) {
-                        this.vx += Math.cos(angleToMouse) * repelStrength * 1.5;
-                        this.vy += Math.sin(angleToMouse) * repelStrength * 1.5;
-                        
-                        if (Math.random() < 0.03) {
-                            this.energyState = Math.floor(Math.random() * 5);
+                    if (mouseMode === 'attract') {
+                        this.vx -= Math.cos(angleToMouse) * repelStrength * 1.2;
+                        this.vy -= Math.sin(angleToMouse) * repelStrength * 1.2;
+                        this.spin += 0.01;
+                    } else if (mouseMode === 'vortex') {
+                        const perpAngle = angleToMouse + Math.PI/2;
+                        this.vx += Math.cos(perpAngle) * repelStrength * 1.0;
+                        this.vy += Math.sin(perpAngle) * repelStrength * 1.0;
+                        this.spin += 0.02;
+                    } else if (mouseMode === 'excite') {
+                        if (distanceToMouse < 50 && Math.random() < 0.1) {
+                            this.energyState = Math.min(this.energyState + 1, 4);
+                            this.isExcited = true;
+                            this.excitementLevel = 1.0;
                             const colors = [
                                 'rgba(0, 255, 255, 0.7)',
                                 'rgba(255, 0, 255, 0.7)',
@@ -100,11 +138,49 @@ document.addEventListener("DOMContentLoaded", function() {
                             ];
                             this.color = colors[this.energyState];
                         }
+                    } else if (mouseMode === 'calm') {
+                        this.vx *= 0.95;
+                        this.vy *= 0.95;
+                        this.spin *= 0.95;
                     } else {
-                        this.vx += Math.cos(angleToMouse) * repelStrength;
-                        this.vy += Math.sin(angleToMouse) * repelStrength;
+                        if (distanceToMouse < 50) {
+                            this.vx += Math.cos(angleToMouse) * repelStrength * 1.5;
+                            this.vy += Math.sin(angleToMouse) * repelStrength * 1.5;
+                            
+                            if (Math.random() < 0.03) {
+                                this.energyState = Math.floor(Math.random() * 5);
+                                const colors = [
+                                    'rgba(0, 255, 255, 0.7)',
+                                    'rgba(255, 0, 255, 0.7)',
+                                    'rgba(255, 255, 0, 0.7)',
+                                    'rgba(0, 255, 0, 0.7)',
+                                    'rgba(255, 165, 0, 0.7)'
+                                ];
+                                this.color = colors[this.energyState];
+                            }
+                        } else {
+                            this.vx += Math.cos(angleToMouse) * repelStrength;
+                            this.vy += Math.sin(angleToMouse) * repelStrength;
+                        }
                     }
                 }
+            }
+            
+            if (this.isExcited) {
+                this.excitementLevel *= 0.95;
+                if (this.excitementLevel < 0.05) {
+                    this.isExcited = false;
+                }
+            }
+            
+            if (Math.abs(this.spin) > 0.01) {
+                const spinFactor = 0.02;
+                const perpX = -this.vy * this.spin * spinFactor;
+                const perpY = this.vx * this.spin * spinFactor;
+                this.vx += perpX;
+                this.vy += perpY;
+                
+                this.spin *= 0.99;
             }
             
             for (const other of bosons) {
@@ -170,6 +246,19 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         draw(ctx: CanvasRenderingContext2D): void {
+            if (this.trail.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                
+                for (let i = 1; i < this.trail.length; i++) {
+                    ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                }
+                
+                ctx.strokeStyle = this.color.replace('0.7', '0.3');
+                ctx.lineWidth = this.radius * 0.5;
+                ctx.stroke();
+            }
+            
             ctx.beginPath();
             
             const waveOffset = Math.sin(this.phase) * this.waveAmplitude;
@@ -177,6 +266,10 @@ document.addEventListener("DOMContentLoaded", function() {
             
             if (this.isWaveMode) {
                 currentRadius += waveOffset;
+            }
+            
+            if (this.isExcited) {
+                currentRadius *= (1 + 0.3 * this.excitementLevel);
             }
             
             let opacity = this.canPush ? 0.7 : 0.9;
@@ -194,15 +287,22 @@ document.addEventListener("DOMContentLoaded", function() {
             ctx.fillStyle = color;
             ctx.fill();
             
+            let glowSize = currentRadius * (this.isExcited ? 4 : 3);
             const gradient = ctx.createRadialGradient(
                 this.x, this.y, 0,
-                this.x, this.y, currentRadius * 3
+                this.x, this.y, glowSize
             );
-            gradient.addColorStop(0, this.color);
+            
+            let baseColor = this.color;
+            if (this.isExcited) {
+                baseColor = baseColor.replace('0.7', `${Math.min(0.9, 0.7 + this.excitementLevel * 0.2)}`);
+            }
+            
+            gradient.addColorStop(0, baseColor);
             gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
             
             ctx.beginPath();
-            ctx.arc(this.x, this.y, currentRadius * 3, 0, Math.PI * 2);
+            ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
             ctx.fillStyle = gradient;
             ctx.fill();
             
@@ -243,6 +343,13 @@ document.addEventListener("DOMContentLoaded", function() {
         mouseRadius: number = 100;
         mouseStrength: number = 1;
         showMouseField: boolean = false;
+        isMouseDown: boolean = false;
+        isDragging: boolean = false;
+        mouseMode: string = 'repel';
+        isDragCreating: boolean = false;
+        dragCreationTimer: number = 0;
+        dragCreationInterval: number = 100; 
+        mouseRightDown: boolean = false;
         
         constructor() {
             this.canvas = document.createElement('canvas');
@@ -267,8 +374,18 @@ document.addEventListener("DOMContentLoaded", function() {
             
             window.addEventListener('resize', () => this.handleResize());
             document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+            document.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+            document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+            document.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                this.mouseRightDown = true;
+                this.mouseMode = 'attract';
+                this.createFieldDisturbance(e.clientX, e.clientY, 'rgba(0, 255, 0, 0.2)');
+                return false;
+            });
             document.addEventListener('click', (e) => this.handleClick(e));
             document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+            document.addEventListener('wheel', (e) => this.handleWheel(e));
             
             this.animate(0);
         }
@@ -326,6 +443,11 @@ document.addEventListener("DOMContentLoaded", function() {
             
             this.mouseX = e.clientX;
             this.mouseY = e.clientY;
+            
+            if (this.isDragCreating && performance.now() - this.dragCreationTimer > this.dragCreationInterval) {
+                this.createParticleAtMouse();
+                this.dragCreationTimer = performance.now();
+            }
             
             const mouseSpeed = Math.sqrt(
                 this.mouseVelocityX * this.mouseVelocityX + 
@@ -396,6 +518,62 @@ document.addEventListener("DOMContentLoaded", function() {
             requestAnimationFrame(animateTrail);
         }
         
+        handleMouseDown(e: MouseEvent): void {
+            if (e.button === 0) { 
+                this.isMouseDown = true;
+                this.isDragCreating = true;
+                this.dragCreationTimer = performance.now();
+            } else if (e.button === 2) { 
+                this.mouseRightDown = true;
+                this.mouseMode = 'attract';
+            }
+        }
+        
+        handleMouseUp(e: MouseEvent): void {
+            if (e.button === 0) {
+                this.isMouseDown = false;
+                this.isDragCreating = false;
+            } else if (e.button === 2) {
+                this.mouseRightDown = false;
+                this.mouseMode = 'repel';
+            }
+        }
+        
+        handleWheel(e: WheelEvent): void {
+            this.mouseRadius = Math.max(20, Math.min(200, this.mouseRadius - e.deltaY * 0.1));
+            
+            this.ctx.beginPath();
+            this.ctx.arc(this.mouseX, this.mouseY, this.mouseRadius, 0, Math.PI * 2);
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            this.ctx.lineWidth = 1;
+            this.ctx.stroke();
+            
+            setTimeout(() => {
+                this.ctx.beginPath();
+                this.ctx.arc(this.mouseX, this.mouseY, this.mouseRadius, 0, Math.PI * 2);
+                this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+                this.ctx.lineWidth = 1;
+                this.ctx.stroke();
+            }, 100);
+        }
+        
+        createParticleAtMouse(): void {
+            if (this.bosons.length < 300) {
+                const boson = new Boson(this.mouseX, this.mouseY);
+                
+                const speedFactor = 0.2;
+                boson.vx = this.mouseVelocityX * speedFactor;
+                boson.vy = this.mouseVelocityY * speedFactor;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 5;
+                boson.x += Math.cos(angle) * distance;
+                boson.y += Math.sin(angle) * distance;
+                
+                this.bosons.push(boson);
+            }
+        }
+        
         handleClick(e: MouseEvent): void {
             const fluctuationPower = 8 + Math.floor(Math.random() * 5);
             const fluctuationEnergy = Math.floor(Math.random() * 5);
@@ -442,11 +620,28 @@ document.addEventListener("DOMContentLoaded", function() {
                 this.createBosons();
                 this.createBosonClusters();
             }
+            
+            if (e.key === 'v' || e.key === 'V') {
+                this.mouseMode = 'vortex';
+                this.createFieldDisturbance(this.mouseX, this.mouseY, 'rgba(0, 100, 255, 0.3)');
+            } else if (e.key === 'a' || e.key === 'A') {
+                this.mouseMode = 'attract';
+                this.createFieldDisturbance(this.mouseX, this.mouseY, 'rgba(0, 255, 0, 0.2)');
+            } else if (e.key === 'r' || e.key === 'R') {
+                this.mouseMode = 'repel';
+                this.createFieldDisturbance(this.mouseX, this.mouseY, 'rgba(255, 0, 0, 0.2)');
+            } else if (e.key === 'e' || e.key === 'E') {
+                this.mouseMode = 'excite';
+                this.createFieldDisturbance(this.mouseX, this.mouseY, 'rgba(255, 255, 0, 0.2)');
+            } else if (e.key === 'c' || e.key === 'C') {
+                this.mouseMode = 'calm';
+                this.createFieldDisturbance(this.mouseX, this.mouseY, 'rgba(100, 100, 255, 0.2)');
+            }
         }
         
-        createFieldDisturbance(x: number, y: number): void {
+        createFieldDisturbance(x: number, y: number, color: string = 'rgba(255, 255, 255, 0.5)'): void {
             const fieldRadius = 100;
-            const duration = 500; 
+            const duration = 500;
             const startTime = performance.now();
             
             const animateField = (timestamp: number) => {
@@ -456,9 +651,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 const currentRadius = fieldRadius * progress;
                 const opacity = 0.5 * (1 - progress);
                 
+                const glowColor = color.replace(/[\d.]+\)$/, `${opacity})`);
+                
                 this.ctx.beginPath();
                 this.ctx.arc(x, y, currentRadius, 0, Math.PI * 2);
-                this.ctx.strokeStyle = `rgba(255, 255, 255, ${opacity})`;
+                this.ctx.strokeStyle = glowColor;
                 this.ctx.lineWidth = 2 * (1 - progress);
                 this.ctx.stroke();
                 
@@ -478,10 +675,26 @@ document.addEventListener("DOMContentLoaded", function() {
             this.ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
             this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
             
+            if (this.showMouseField) {
+                this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                this.ctx.font = '14px Arial';
+                this.ctx.fillText(`Mode: ${this.mouseMode} (${Math.round(this.mouseRadius)}px)`, this.mouseX + 15, this.mouseY - 15);
+            }
+            
             if (this.showMouseField && (this.mouseVelocityX !== 0 || this.mouseVelocityY !== 0)) {
+                let fieldColor = 'rgba(255, 255, 255, 0.2)';
+                
+                switch (this.mouseMode) {
+                    case 'attract': fieldColor = 'rgba(0, 255, 0, 0.2)'; break;
+                    case 'vortex': fieldColor = 'rgba(0, 100, 255, 0.2)'; break;
+                    case 'excite': fieldColor = 'rgba(255, 255, 0, 0.2)'; break;
+                    case 'calm': fieldColor = 'rgba(100, 100, 255, 0.2)'; break;
+                    default: fieldColor = 'rgba(255, 0, 0, 0.2)'; 
+                }
+                
                 this.ctx.beginPath();
                 this.ctx.arc(this.mouseX, this.mouseY, this.mouseRadius, 0, Math.PI * 2);
-                this.ctx.strokeStyle = `rgba(255, 255, 255, 0.2)`;
+                this.ctx.strokeStyle = fieldColor;
                 this.ctx.lineWidth = 1;
                 this.ctx.stroke();
                 
@@ -498,7 +711,7 @@ document.addEventListener("DOMContentLoaded", function() {
             }
             
             for (const boson of this.bosons) {
-                boson.update(dt, this.bosons, this.mouseX, this.mouseY);
+                boson.update(dt, this.bosons, this.mouseX, this.mouseY, this.mouseMode);
                 boson.draw(this.ctx);
             }
             
