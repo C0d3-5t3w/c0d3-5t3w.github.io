@@ -343,3 +343,4 @@ $random_quote = $quotes[array_rand($quotes)];
         </script>
     </body>
 </html>
+<!-- <3 -->
