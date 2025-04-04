@@ -350,6 +350,7 @@ document.addEventListener("DOMContentLoaded", function() {
         dragCreationTimer: number = 0;
         dragCreationInterval: number = 100; 
         mouseRightDown: boolean = false;
+        animating: boolean = true;
         
         constructor() {
             this.canvas = document.createElement('canvas');
@@ -358,9 +359,11 @@ document.addEventListener("DOMContentLoaded", function() {
             this.canvas.style.position = 'fixed';
             this.canvas.style.top = '0';
             this.canvas.style.left = '0';
-            this.canvas.style.zIndex = '1';
+            this.canvas.style.zIndex = '-1'; 
             this.canvas.style.pointerEvents = 'none';
-            document.body.appendChild(this.canvas);
+            
+            const container = document.getElementById('boson-container') || document.body;
+            container.appendChild(this.canvas);
             
             this.ctx = this.canvas.getContext('2d')!;
             this.bosons = [];
@@ -369,7 +372,6 @@ document.addEventListener("DOMContentLoaded", function() {
             this.lastMouseY = this.mouseY;
             
             this.createBosons();
-            
             this.createBosonClusters();
             
             window.addEventListener('resize', () => this.handleResize());
@@ -387,7 +389,55 @@ document.addEventListener("DOMContentLoaded", function() {
             document.addEventListener('keydown', (e) => this.handleKeyDown(e));
             document.addEventListener('wheel', (e) => this.handleWheel(e));
             
+            document.addEventListener('boson:setMode', (e: Event) => {
+                const customEvent = e as CustomEvent;
+                if (customEvent.detail && customEvent.detail.mode) {
+                    this.mouseMode = customEvent.detail.mode;
+                    this.createFieldDisturbance(
+                        this.mouseX, 
+                        this.mouseY, 
+                        this.getModeColor(customEvent.detail.mode)
+                    );
+                }
+            });
+            
+            document.addEventListener('boson:setDensity', (e: Event) => {
+                const customEvent = e as CustomEvent;
+                if (customEvent.detail && customEvent.detail.density) {
+                    const targetCount = customEvent.detail.density;
+                    
+                    if (targetCount > this.bosons.length) {
+                        for (let i = 0; i < targetCount - this.bosons.length; i++) {
+                            const x = Math.random() * this.canvas.width;
+                            const y = Math.random() * this.canvas.height;
+                            this.bosons.push(new Boson(x, y));
+                        }
+                    } else if (targetCount < this.bosons.length) {
+                        this.bosons = this.bosons.slice(0, targetCount);
+                    }
+                }
+            });
+            
+            document.addEventListener('boson:toggle', () => {
+                this.isRunning = !this.isRunning;
+                
+                if (this.isRunning && !this.animating) {
+                    this.animate(performance.now());
+                    this.animating = true;
+                }
+            });
+            
             this.animate(0);
+        }
+        
+        getModeColor(mode: string): string {
+            switch (mode) {
+                case 'attract': return 'rgba(0, 255, 0, 0.2)';
+                case 'vortex': return 'rgba(0, 100, 255, 0.2)';
+                case 'excite': return 'rgba(255, 255, 0, 0.2)';
+                case 'calm': return 'rgba(100, 100, 255, 0.2)';
+                default: return 'rgba(255, 0, 0, 0.2)'; 
+            }
         }
         
         createBosons(): void {
@@ -668,6 +718,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         
         animate(timestamp: number): void {
+            if (!this.isRunning) {
+                this.animating = false;
+                return;
+            }
+            
             if (!this.lastTime) this.lastTime = timestamp;
             const dt = timestamp - this.lastTime;
             this.lastTime = timestamp;
@@ -817,4 +872,5 @@ document.addEventListener("DOMContentLoaded", function() {
     }
     
     const bosonSystem = new BosonSystem();
+    (window as any).bosonSystem = bosonSystem;
 });
