@@ -48,8 +48,8 @@ class SiteMapDropdown {
             { text: '🔗 Links', url: 'pkg/pages/links.html' },
             // { text: '🎈 Balloons', url: 'pkg/pages/balloons.html' },
             // { text: '✨ Particles', url: 'pkg/pages/particles.html' },
-            { text: '😸 FlappyZig', url: 'pkg/pages/FlappyZig.html' },
-            { text: '🐍 Znek', url: 'pkg/pages/znek.html' },
+            // { text: '😸 FlappyZig', url: 'pkg/pages/FlappyZig.html' },
+            // { text: '🐍 Znek', url: 'pkg/pages/znek.html' },
             // { text: '🫶🏼 Test', url: 'pkg/pages/test.html' },
             { text: '😻 Ziggy!', url: 'https://c0d3-5t3w.github.io/Ziggy/' },
         ];
