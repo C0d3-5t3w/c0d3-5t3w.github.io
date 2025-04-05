@@ -60,25 +60,25 @@ jobs:
             "compilerOptions": {
               "target": "ES6",
               "module": "ES2020",
-              "outDir": "./assets/js",
-              "rootDir": "./assets/ts",
+              "outDir": "./pkg/assets/js",
+              "rootDir": "./pkg/assets/ts",
               "strict": true,
               "esModuleInterop": true,
               "skipLibCheck": true,
               "forceConsistentCasingInFileNames": true
             },
-            "include": ["./assets/ts/**/*"],
+            "include": ["./pkg/assets/ts/**/*"],
             "exclude": ["node_modules"]
           }' > tsconfig.json
       
       - name: List TypeScript files
         run: |
           echo "Found TypeScript files:"
-          find ./assets/ts -name "*.ts" | sort
+          find ./pkg/assets/ts -name "*.ts" | sort
       
       - name: Compile TypeScript
         run: |
-          mkdir -p assets/js
+          mkdir -p pkg/assets/js
           echo "Compiling TypeScript files..."
           
           # First try standard tsc compilation
@@ -89,9 +89,9 @@ jobs:
             echo "TypeScript compilation failed with tsc. Trying alternative method."
             
             # Fallback method: compile each TS file individually
-            find ./assets/ts -name "*.ts" | while read -r file; do
+            find ./pkg/assets/ts -name "*.ts" | while read -r file; do
               echo "Individually compiling $file"
-              outfile="./assets/js/$(basename "${file%.ts}.js")"
+              outfile="./pkg/assets/js/$(basename "${file%.ts}.js")"
               outdir=$(dirname "$outfile")
               mkdir -p "$outdir"
               npx tsc "$file" --outDir "$outdir" --target ES6 --module ES2020
@@ -101,35 +101,35 @@ jobs:
       - name: Verify JavaScript output
         run: |
           echo "Generated JavaScript files:"
-          find ./assets/js -name "*.js" | sort
+          find ./pkg/assets/js -name "*.js" | sort
           
           # Check for any missing outputs
-          ts_files=$(find ./assets/ts -name "*.ts" | wc -l)
-          js_files=$(find ./assets/js -name "*.js" | wc -l)
+          ts_files=$(find ./pkg/assets/ts -name "*.ts" | wc -l)
+          js_files=$(find ./pkg/assets/js -name "*.js" | wc -l)
           echo "TypeScript files count: $ts_files"
           echo "JavaScript files count: $js_files"
           
           # Special handling for critical files
           for critical_file in "Znek" "FlappyZig" "main" "alt" "dropdown" "altdropdown"; do
-            if [ -f "./assets/ts/${critical_file}.ts" ] && [ ! -f "./assets/js/${critical_file}.js" ]; then
+            if [ -f "./pkg/assets/ts/${critical_file}.ts" ] && [ ! -f "./pkg/assets/js/${critical_file}.js" ]; then
               echo "⚠️ Critical file missing: ${critical_file}.js - attempting direct compilation"
-              npx tsc ./assets/ts/${critical_file}.ts --outFile ./assets/js/${critical_file}.js --target ES6 --module None
+              npx tsc ./pkg/assets/ts/${critical_file}.ts --outFile ./pkg/assets/js/${critical_file}.js --target ES6 --module None
             fi
           done
           
       - name: Lint JavaScript
         run: |
-          npx eslint assets/js/*.js --fix || true
+          npx eslint pkg/assets/js/*.js --fix || true
           
       - name: Minify JavaScript
         run: |
-          find ./assets/js -name "*.js" | while read -r file; do
+          find ./pkg/assets/js -name "*.js" | while read -r file; do
             if [ -f "$file" ]; then
               echo "Minifying $file"
               npx terser "$file" \
                 --compress \
                 --mangle \
-                --source-map "base='assets/js',root='assets/js',url='$(basename "$file").map'" \
+                --source-map "base='pkg/assets/js',root='pkg/assets/js',url='$(basename "$file").map'" \
                 --output "${file%.js}.min.js"
               if [ -f "${file%.js}.min.js}" ]; then
                 mv "${file%.js}.min.js" "$file"
@@ -157,15 +157,15 @@ jobs:
           
       - name: Compile Sass
         run: |
-          mkdir -p assets/css
+          mkdir -p pkg/assets/css
           echo "Compiling all SCSS files..."
           
           # Find all SCSS files and compile them
-          find ./assets/sass -name "*.scss" | while read -r scss_file; do
+          find ./pkg/assets/sass -name "*.scss" | while read -r scss_file; do
             # Get relative path of the SCSS file within the sass directory
-            rel_path=$(echo "$scss_file" | sed 's|./assets/sass/||')
+            rel_path=$(echo "$scss_file" | sed 's|./pkg/assets/sass/||')
             # Create the output path in the css directory
-            css_file="./assets/css/${rel_path%.scss}.css"
+            css_file="./pkg/assets/css/${rel_path%.scss}.css"
             # Create directory for output file if it doesn't exist
             mkdir -p "$(dirname "$css_file")"
             
@@ -181,7 +181,7 @@ jobs:
           
           # Verify CSS outputs
           echo "Generated CSS files:"
-          find ./assets/css -name "*.css" | sort
+          find ./pkg/assets/css -name "*.css" | sort
           
       - name: Setup Pages
         uses: actions/configure-pages@v5
