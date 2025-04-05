@@ -50,7 +50,7 @@ class SiteMapDropdown {
             // { text: '✨ Particles', url: 'pkg/pages/particles.html' },
             { text: '😸 FlappyZig', url: 'pkg/pages/FlappyZig.html' },
             { text: '🐍 Znek', url: 'pkg/pages/znek.html' },
-            { text: '🫶🏼 Test', url: 'pkg/pages/test.html' },
+            // { text: '🫶🏼 Test', url: 'pkg/pages/test.html' },
         ];
 
         links.forEach(link => {

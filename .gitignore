@@ -2,16 +2,18 @@
 .git
 .github
 .gitignore
-# /pages/test.php
-# /pages/test.html
-/pages/balloons.php
-/pages/balloons.html
-/pages/particles.php
-/pages/particles.html
-/assets/ts/balloons.ts
-/assets/js/balloons.js
-/assets/ts/particles.ts
-/assets/js/particles.js
-# /assets/ts/boson.ts
-# /assets/js/boson.js
+/pkg/pages/test.php
+/pkg/pages/test.html
+/pkg/pages/balloons.php
+/pkg/pages/balloons.html
+/pkg/pages/particles.php
+/pkg/pages/particles.html
+/pkg/assets/ts/balloons.ts
+/pkg/assets/js/balloons.js
+/pkg/assets/ts/particles.ts
+/pkg/assets/js/particles.js
+/pkg/assets/ts/boson.ts
+/pkg/assets/js/boson.js
+/pkg/assets/storage
+/internal
 # <3
