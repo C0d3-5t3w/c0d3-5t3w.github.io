@@ -1,6 +1,6 @@
 MAIN_PATH=cmd/main/main.go
 
-all: clean go php ts sass 
+all: clean go php ts sass run 
 
 clean:
 	@go clean
