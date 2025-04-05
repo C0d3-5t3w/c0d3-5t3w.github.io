@@ -176,7 +176,7 @@ $random_quote = $quotes[array_rand($quotes)];
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <link rel="stylesheet" href="assets/css/main.css">
+        <link rel="stylesheet" href="pkg/assets/css/main.css">
         <title>C0D3-5T3W</title>
         <style>
             .quote-of-the-day {
@@ -238,7 +238,7 @@ $random_quote = $quotes[array_rand($quotes)];
     </head>
     <body>
         <div class="content">
-            <img src="assets/images/THELOGO.jpg" alt="5T3W Logo" class="logo">
+            <img src="pkg/assets/images/THELOGO.jpg" alt="5T3W Logo" class="logo">
             <h1>
                 C0D3-5T3W
             </h1>
@@ -317,8 +317,8 @@ $random_quote = $quotes[array_rand($quotes)];
                 <button id="new-quote-btn" class="pulse-button">Generate New Quote</button>
             </div>
         </div>
-        <script src="assets/js/main.js"></script>
-        <script src="assets/js/dropdown.js"></script>
+        <script src="pkg/assets/js/main.js"></script>
+        <script src="pkg/assets/js/dropdown.js"></script>
         <script>
             const allQuotes = <?php echo json_encode($quotes); ?>;
             

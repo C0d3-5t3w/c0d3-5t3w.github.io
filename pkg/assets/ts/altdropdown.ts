@@ -41,7 +41,7 @@ class PageSiteMapDropdown {
         this.content.style.marginTop = '5px';
 
         const links = [
-            { text: '🏠 Home', url: '../index.html' },
+            { text: '🏠 Home', url: '../../index.html' },
             { text: '📷 Pictures', url: 'pictures.html' },
             { text: '🍲 Recipes', url: 'recipes.html' },
             { text: '💡 Advice', url: 'advice.html' },

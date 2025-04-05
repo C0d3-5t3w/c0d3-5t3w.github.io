@@ -42,15 +42,15 @@ class SiteMapDropdown {
 
         const links = [
             { text: '🏠 Home', url: 'index.html' },
-            { text: '📷 Pictures', url: 'pages/pictures.html' },
-            { text: '🍲 Recipes', url: 'pages/recipes.html' },
-            { text: '💡 Advice', url: 'pages/advice.html' },
-            { text: '🔗 Links', url: 'pages/links.html' },
-            // { text: '🎈 Balloons', url: 'pages/balloons.html' },
-            // { text: '✨ Particles', url: 'pages/particles.html' },
-            { text: '😸 FlappyZig', url: 'pages/FlappyZig.html' },
-            { text: '🐍 Znek', url: 'pages/znek.html' },
-            { text: '🫶🏼 Test', url: 'pages/test.html' },
+            { text: '📷 Pictures', url: 'pkg/pages/pictures.html' },
+            { text: '🍲 Recipes', url: 'pkg/pages/recipes.html' },
+            { text: '💡 Advice', url: 'pkg/pages/advice.html' },
+            { text: '🔗 Links', url: 'pkg/pages/links.html' },
+            // { text: '🎈 Balloons', url: 'pkg/pages/balloons.html' },
+            // { text: '✨ Particles', url: 'pkg/pages/particles.html' },
+            { text: '😸 FlappyZig', url: 'pkg/pages/FlappyZig.html' },
+            { text: '🐍 Znek', url: 'pkg/pages/znek.html' },
+            { text: '🫶🏼 Test', url: 'pkg/pages/test.html' },
         ];
 
         links.forEach(link => {
