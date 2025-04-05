@@ -1,0 +1,23 @@
+.DS_Store
+.DS_Store/
+.git/
+/.git/
+# .github/
+# /.github/
+# .gitignore
+/pkg/pages/test.php/
+/pkg/pages/test.html/
+/pkg/pages/balloons.php/
+/pkg/pages/balloons.html/
+/pkg/pages/particles.php/
+/pkg/pages/particles.html/
+/pkg/assets/ts/balloons.ts/
+/pkg/assets/js/balloons.js/
+/pkg/assets/ts/particles.ts/
+/pkg/assets/js/particles.js/
+/pkg/assets/ts/boson.ts/
+/pkg/assets/js/boson.js/
+/pkg/assets/storage/
+/internal/
+internal/
+# <3
