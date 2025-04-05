@@ -51,6 +51,7 @@ class PageSiteMapDropdown {
             { text: '😸 FlappyZig', url: 'FlappyZig.html' },
             { text: '🐍 Znek', url: 'znek.html' },
             // { text: '🫶🏼 Test', url: 'test.html' },
+            { text: '😻 Ziggy!', url: 'https://c0d3-5t3w.github.io/Ziggy/' },
         ];
 
         links.forEach(link => {
