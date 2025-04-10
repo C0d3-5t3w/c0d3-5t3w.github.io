@@ -7,8 +7,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title class="pride-font">Cat Runner 3D</title>
-    <link rel="stylesheet" href="/pkg/assets/css/gTest.css">
+    <title class="pride-font">ZigWalk</title>
+    <link rel="stylesheet" href="/pkg/assets/css/ZigWalk.css">
     <link rel="stylesheet" href="/pkg/assets/css/fonts.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -37,6 +37,6 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         </div>
         <canvas id="game-canvas"></canvas>
     </div>
-    <script src="/pkg/assets/js/gTest.js"></script>
+    <script src="/pkg/assets/js/ZigWalk.js"></script>
 </body>
 </html>
