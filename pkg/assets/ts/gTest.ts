@@ -255,19 +255,37 @@ class CubeRunner {
   private jumpVelocity: number = 0;
   
   private keys: { [key: string]: boolean } = {};
+  private isTouchDevice: boolean = false;
+  private mobileControls: {
+    left: boolean;
+    right: boolean;
+    jump: boolean;
+  } = {
+    left: false,
+    right: false,
+    jump: false
+  };
   
   constructor() {
     this.initGame();
   }
 
   private initGame(): void {
+    this.isTouchDevice = this.detectTouchDevice();
     this.initScene();
     this.initPlayer();
     this.initGround();
     this.initLights();
     this.initEventListeners();
     this.createObstacles();
+    this.setupMobileControls();
     this.gameLoop(0);
+  }
+  
+  private detectTouchDevice(): boolean {
+    return (('ontouchstart' in window) ||
+       (navigator.maxTouchPoints > 0) ||
+       ((navigator as any).msMaxTouchPoints > 0));
   }
   
   private initScene(): void {
@@ -432,6 +450,34 @@ class CubeRunner {
     const restartButton = document.getElementById('restart-button');
     if (restartButton) {
       restartButton.addEventListener('click', this.restartGame.bind(this));
+    }
+  }
+  
+  private setupMobileControls(): void {
+    const mobileControlsElement = document.getElementById('mobile-controls');
+    if (mobileControlsElement) {
+      if (this.isTouchDevice) {
+        mobileControlsElement.classList.remove('hidden');
+        
+        const leftButton = document.getElementById('mobile-left');
+        const rightButton = document.getElementById('mobile-right');
+        const jumpButton = document.getElementById('mobile-jump');
+        
+        if (leftButton) {
+          leftButton.addEventListener('touchstart', () => { this.mobileControls.left = true; });
+          leftButton.addEventListener('touchend', () => { this.mobileControls.left = false; });
+        }
+        
+        if (rightButton) {
+          rightButton.addEventListener('touchstart', () => { this.mobileControls.right = true; });
+          rightButton.addEventListener('touchend', () => { this.mobileControls.right = false; });
+        }
+        
+        if (jumpButton) {
+          jumpButton.addEventListener('touchstart', () => { this.mobileControls.jump = true; });
+          jumpButton.addEventListener('touchend', () => { this.mobileControls.jump = false; });
+        }
+      }
     }
   }
   
@@ -620,13 +666,14 @@ class CubeRunner {
     
     let isMoving = false;
     
-    if ((this.keys['ArrowLeft'] || this.keys['a']) && 
+    if ((this.keys['ArrowLeft'] || this.keys['a'] || this.mobileControls.left) && 
         this.player.position.x > GameConfig.WORLD.BOUNDARY_LEFT) {
       this.player.position.x -= movementSpeed;
       this.player.rotation.y = Math.PI + Math.PI / 8; 
       isMoving = true;
     }
-    if ((this.keys['ArrowRight'] || this.keys['d']) && 
+    
+    if ((this.keys['ArrowRight'] || this.keys['d'] || this.mobileControls.right) && 
         this.player.position.x < GameConfig.WORLD.BOUNDARY_RIGHT) {
       this.player.position.x += movementSpeed;
       this.player.rotation.y = Math.PI - Math.PI / 8; 
@@ -642,10 +689,11 @@ class CubeRunner {
                    this.player.position.y <= GameConfig.PLAYER.START_Y + 0.1 &&
                    timeSinceLastJump > GameConfig.PLAYER.JUMP_COOLDOWN;
     
-    if ((this.keys[' '] || this.keys['ArrowUp'] || this.keys['w']) && canJump) {
+    if ((this.keys[' '] || this.keys['ArrowUp'] || this.keys['w'] || this.mobileControls.jump) && canJump) {
       this.jumpVelocity = GameConfig.PHYSICS.JUMP_FORCE;
       this.gameState.playerJumping = true;
       this.gameState.lastJumpTime = currentTime;
+      this.mobileControls.jump = false; 
     }
     
     if (this.gameState.playerJumping || this.player.position.y > GameConfig.PLAYER.START_Y) {
@@ -771,6 +819,12 @@ class CubeRunner {
       obstacle.mesh.position.x = Math.random() * 16 - 8;
       obstacle.baseX = obstacle.mesh.position.x;
     });
+    
+    this.mobileControls = {
+      left: false,
+      right: false,
+      jump: false
+    };
     
     this.lastFrameTime = performance.now();
     this.gameLoop(this.lastFrameTime);

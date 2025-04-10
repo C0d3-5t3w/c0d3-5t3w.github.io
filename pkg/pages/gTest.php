@@ -1,3 +1,7 @@
+<?php
+header("Cache-Control: no-cache, must-revalidate");
+header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -16,6 +20,11 @@
             <h2 class="pride-font">Game Over!</h2>
             <p>Final Score: <span id="final-score">0</span></p>
             <button id="restart-button">Play Again</button>
+        </div>
+        <div id="mobile-controls" class="hidden">
+            <button id="mobile-left" class="mobile-btn">←</button>
+            <button id="mobile-jump" class="mobile-btn">JUMP</button>
+            <button id="mobile-right" class="mobile-btn">→</button>
         </div>
         <canvas id="game-canvas"></canvas>
     </div>

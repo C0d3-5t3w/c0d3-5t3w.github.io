@@ -113,3 +113,59 @@ html, body {
 .score-updated {
   animation: scoreUpdate 0.5s ease;
 }
+
+#mobile-controls {
+  position: absolute;
+  bottom: 20px;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  padding: 0 20px;
+  z-index: 100;
+  pointer-events: none; 
+
+  &.hidden {
+    display: none;
+  }
+
+  .mobile-btn {
+    background-color: rgba(0, 0, 0, 0.5);
+    color: $text-light;
+    border: 2px solid rgba(255, 255, 255, 0.7);
+    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    font-size: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 10px;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    pointer-events: auto; 
+
+    &:active {
+      background-color: rgba(255, 255, 255, 0.3);
+      transform: scale(0.95);
+    }
+
+    &#mobile-jump {
+      width: 100px;
+      border-radius: $border-radius;
+      font-size: 18px;
+    }
+  }
+}
+
+@media (pointer: fine) {
+  #mobile-controls {
+    display: none !important;
+  }
+}
+
+@media (pointer: coarse) {
+  #instructions {
+    display: none;
+  }
+}
