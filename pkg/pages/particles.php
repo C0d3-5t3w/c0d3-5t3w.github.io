@@ -9,7 +9,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/alt.css">
-    <title>particles</title>
+    <link rel="stylesheet" href="../assets/css/fonts.css">
+    <title class="pride-font">particles</title>
     <style>
         .particle {
             position: absolute;

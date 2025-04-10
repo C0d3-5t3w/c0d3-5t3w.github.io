@@ -255,11 +255,12 @@ $hispanic_recipes = [
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="../assets/css/main.css">
         <link rel="stylesheet" href="../assets/css/alt.css">
+        <link rel="stylesheet" href="../assets/css/fonts.css">
         <title>Recipes</title>
     </head>
     <body>
         <div class="content page-content">
-            <h1 class="animated-heading">Thai Recipes</h1>
+            <h1 class="animated-heading pride-font">Thai Recipes</h1>
             <div class="recipe-container">
                 <?php foreach($thai_recipes as $recipe): ?>
                     <div class="recipe-item">
@@ -280,7 +281,7 @@ $hispanic_recipes = [
                 <span>🤌🏼</span>
             </div>
             
-            <h1 class="animated-heading">Hispanic Recipes</h1>
+            <h1 class="animated-heading pride-font">Hispanic Recipes</h1>
             <div class="recipe-container">
                 <?php foreach($hispanic_recipes as $recipe): ?>
                     <div class="recipe-item">

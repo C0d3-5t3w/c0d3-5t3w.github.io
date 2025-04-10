@@ -9,8 +9,9 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <meta name="viewport" content="width=device-width, height=device-height, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/alt.css">
+    <link rel="stylesheet" href="../assets/css/fonts.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Play:wght@400;700&display=swap" rel="stylesheet">
-    <title>Znek Game</title>
+    <title class="pride-font">Znek Game</title>
     <style>
         body {
             margin: 0;
@@ -314,7 +315,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <canvas id="znekCanvas" width="800" height="600"></canvas>
         </div>
         <div id="controls" class="game-controls">
-            <h3>How to Play Znek</h3>
+            <h3 class="pride-font">How to Play Znek</h3>
             <p><strong>🐍 Goal:</strong> Guide your snake, eat food, and avoid obstacles</p>
             <p><strong>🎮 Controls:</strong> Arrow keys or D-pad to move</p>
             <p><strong>🔫 Combat:</strong> Press SPACE or use Shoot button to fire at ghosts</p>

@@ -9,11 +9,12 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="../assets/css/main.css">
         <link rel="stylesheet" href="../assets/css/alt.css">
+        <link rel="stylesheet" href="../assets/css/fonts.css">
         <title>Links</title>
     </head>
     <body>
         <div class="content page-content">
-            <h1 class="animated-heading">Personal Links</h1>
+            <h1 class="animated-heading pride-font">Personal Links</h1>
             <div class="links-container">
                 <ul class="links-list">
                     <li><a href="https://github.com/C0d3-5t3w" class="enhanced-link">GitHub Profile</a></li>

@@ -9,6 +9,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/alt.css">
+    <link rel="stylesheet" href="../assets/css/fonts.css">
     <title>Balloons</title>
     <style>
         .balloon {
@@ -178,7 +179,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     
     <div class="balloon-controls collapsed" id="balloon-controls">
         <button class="controls-toggle" id="controls-toggle">▼</button>
-        <h3>Balloon Controls</h3>
+        <h3 class="pride-font">Balloon Controls</h3>
         <div class="control-item">
             <label for="balloon-size">Size:</label>
             <input type="range" id="balloon-size" min="20" max="100" value="50">
@@ -251,7 +252,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     </div>
     
     <div class="content page-content">
-        <h1 class="animated-heading">Balloon Room</h1>
+        <h1 class="animated-heading pride-font">Balloon Room</h1>
         <p>Click and drag to move the balloons. Double-click or right-click to pop them!</p>
         <script src="../assets/js/altdropdown.js"></script>
     </div>

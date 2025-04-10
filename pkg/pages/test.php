@@ -12,6 +12,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/test.css">
+    <link rel="stylesheet" href="../assets/css/fonts.css">
 </head>
 <body>
     <div id="boson-container" class="boson-background"></div>
@@ -37,7 +38,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 
     <div class="content">
         <section id="features">
-            <h2>Key Features</h2>
+            <h2 class="pride-font">Key Features</h2>
             <div class="grid">
                 <div class="card">
                     <h3 class="card-title">Interactive Buttons</h3>
@@ -61,21 +62,21 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         </section>
 
         <section id="test-buttons">
-            <h2>Test Buttons</h2>
+            <h2 class="pride-font">Test Buttons</h2>
             <p>Click the buttons below to test their functionality:</p>
             <div class="test-buttons">
             </div>
         </section>
 
         <section id="particle-controls">
-            <h2>Particle Controls</h2>
+            <h2 class="pride-font">Particle Controls</h2>
             <p>Control the background particle system:</p>
             <div class="particle-controls">
             </div>
         </section>
 
         <section id="about">
-            <h2>About This Test Site</h2>
+            <h2 class="pride-font">About This Test Site</h2>
             <p>This professional test environment provides a framework for testing UI components, interactions, and design elements. Use this platform to validate functionality and ensure a smooth user experience.</p>
             <div class="card">
                 <h3 class="card-title">Technical Details</h3>

@@ -239,10 +239,10 @@ $random_quote = $quotes[array_rand($quotes)];
     <body>
         <div class="content">
             <img src="pkg/assets/images/THELOGO.jpg" alt="5T3W Logo" class="logo">
-            <h1>
+            <h1 class="pride-font">
                 C0D3-5T3W
             </h1>
-            <h2>
+            <h2 class="pride-font-animated">
                 W3LC0M3!
             </h2>
             <h3>
@@ -300,7 +300,7 @@ $random_quote = $quotes[array_rand($quotes)];
                     </p>
                 </div>
             </h3>
-            <h1>
+            <h1 class="pride-font">
                 My music:
             </h1>
             <div id="soundcloud-widget" class="widget-container">
@@ -310,7 +310,7 @@ $random_quote = $quotes[array_rand($quotes)];
                 <iframe style="border-radius:12px" src="https://open.spotify.com/embed/artist/1Cg54cIvfa7dz1GuYHvgAd?utm_source=generator&theme=0" width="100%" height="152" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>                
             </div>
             <div class="quote-of-the-day">
-                <h1>Random quote:</h1>
+                <h1 class="pride-font">Random quote:</h1>
                 <div id="quote-text">
                     <h2><p id="quote-content"><?php echo $random_quote; ?></p></h2>
                 </div>

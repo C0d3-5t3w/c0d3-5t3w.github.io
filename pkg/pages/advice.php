@@ -76,26 +76,27 @@ $dubstep_advice = [
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link rel="stylesheet" href="../assets/css/main.css">
         <link rel="stylesheet" href="../assets/css/alt.css">
+        <link rel="stylesheet" href="../assets/css/fonts.css">
         <title>Advice</title>
     </head>
     <body>
         <div class="content page-content">
             <div class="advice-section">
-                <h1 class="animated-heading">Coding Advice</h1>
+                <h1 class="animated-heading pride-font">Coding Advice</h1>
                 <ul id="coding-advice" class="styled-list"></ul>
 
                 <div class="section-divider">
                     <span>🫶🏻</span>
                 </div>
 
-                <h1 class="animated-heading">Cooking Advice</h1>
+                <h1 class="animated-heading pride-font">Cooking Advice</h1>
                 <ul id="cooking-advice" class="styled-list"></ul>
 
                 <div class="section-divider">
                     <span>👍🏼</span>
                 </div>
 
-                <h1 class="animated-heading">Dubstep Music Advice</h1>
+                <h1 class="animated-heading pride-font">Dubstep Music Advice</h1>
                 <ul id="dubstep-advice" class="styled-list"></ul>
             </div>
             <script src="../assets/js/altdropdown.js"></script>

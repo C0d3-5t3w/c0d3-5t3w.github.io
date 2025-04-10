@@ -1,0 +1,37 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&display=swap');
+
+.pride-font {
+  font-family: 'Pacifico', cursive;
+  background: linear-gradient(
+    to right, 
+    #ff0018, 
+    #ffa52c, 
+    #ffff41, 
+    #008018, 
+    #0000f9, 
+    #86007d
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  display: inline-block;
+  font-weight: bold;
+  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
+}
+
+h1.pride-font, h2.pride-font, h3.pride-font {
+  margin: 0.5em 0;
+  line-height: 1.3;
+}
+
+@keyframes rainbow-wave {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.pride-font-animated {
+  @extend .pride-font;
+  background-size: 200% auto;
+  animation: rainbow-wave 5s linear infinite;
+}

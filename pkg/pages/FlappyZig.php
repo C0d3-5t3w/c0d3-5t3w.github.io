@@ -9,7 +9,8 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/alt.css">
-    <title>FlappyZig Game</title>
+    <link rel="stylesheet" href="../assets/css/fonts.css">
+    <title class="pride-font">FlappyZig Game</title>
     <style>
         body {
             margin: 0;
@@ -29,7 +30,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
         <div class="canvas">
         </div>
         <div id="controls" class="game-controls">
-            <h3>Controls:</h3>
+            <h3 class="pride-font">Controls:</h3>
             <p>Desktop: SPACE to jump, G to shoot</p>
             <p>Mobile: Tap left half to jump, right half to shoot</p>
             <p class="instructions">Tap anywhere to start</p>

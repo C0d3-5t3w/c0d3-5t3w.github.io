@@ -56,11 +56,12 @@ $spotlight = $images[array_rand($images)];
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../assets/css/main.css">
     <link rel="stylesheet" href="../assets/css/alt.css">
+    <link rel="stylesheet" href="../assets/css/fonts.css">
     <title>My Pictures</title>
 </head>
 <body>
     <div class="content page-content">
-        <h1 class="animated-heading">My Pictures</h1>
+        <h1 class="animated-heading pride-font">My Pictures</h1>
         
         <div class="gallery-container">
             <div class="spotlight-container spotlight-effect">
