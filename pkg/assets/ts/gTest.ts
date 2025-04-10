@@ -196,7 +196,6 @@ declare namespace THREE {
     constructor(radius?: number, height?: number, radialSegments?: number);
   }
   
-  // Constants
   const BackSide: number;
   const DoubleSide: number;
   const PCFSoftShadowMap: number;
@@ -288,6 +287,7 @@ class Obstacle {
   public baseX: number = 0;
   public moveDirection: number = 1;
   public rotationSpeed: number = 0;
+  public passed: boolean = false; 
   private readonly MOVEMENT_SPEED: number = 0.02;
   private readonly ROTATION_MAX: number = 0.01;
   
@@ -353,10 +353,14 @@ class CubeRunner {
     left: boolean;
     right: boolean;
     jump: boolean;
+    forward: boolean;  
+    backward: boolean; 
   } = {
     left: false,
     right: false,
-    jump: false
+    jump: false,
+    forward: false, 
+    backward: false 
   };
   
   constructor() {
@@ -524,8 +528,11 @@ class CubeRunner {
       }
       
       const angle = (i / GameConfig.WORLD.MOUNTAIN_COUNT) * Math.PI * 2;
-      const distance = 80 + Math.random() * 100;
+      const minDistance = 120;
+      const maxDistance = 200;
+      const distance = minDistance + Math.random() * (maxDistance - minDistance);
       mountainGroup.position.x = Math.cos(angle) * distance;
+      mountainGroup.position.y = 0;
       mountainGroup.position.z = Math.sin(angle) * distance - 100;
       
       this.mountains.push(mountainGroup);
@@ -915,6 +922,8 @@ class CubeRunner {
         const leftButton = document.getElementById('mobile-left');
         const rightButton = document.getElementById('mobile-right');
         const jumpButton = document.getElementById('mobile-jump');
+        const forwardButton = document.getElementById('mobile-forward');  
+        const backwardButton = document.getElementById('mobile-backward');  
         
         if (leftButton) {
           leftButton.addEventListener('touchstart', () => { this.mobileControls.left = true; });
@@ -929,6 +938,16 @@ class CubeRunner {
         if (jumpButton) {
           jumpButton.addEventListener('touchstart', () => { this.mobileControls.jump = true; });
           jumpButton.addEventListener('touchend', () => { this.mobileControls.jump = false; });
+        }
+        
+        if (forwardButton) {
+          forwardButton.addEventListener('touchstart', () => { this.mobileControls.forward = true; });
+          forwardButton.addEventListener('touchend', () => { this.mobileControls.forward = false; });
+        }
+        
+        if (backwardButton) {
+          backwardButton.addEventListener('touchstart', () => { this.mobileControls.backward = true; });
+          backwardButton.addEventListener('touchend', () => { this.mobileControls.backward = false; });
         }
       }
     }
@@ -1176,6 +1195,24 @@ class CubeRunner {
       isMoving = true;
     }
     
+    if ((this.keys['ArrowUp'] || this.keys['w'] || this.mobileControls.forward)) {
+      const forwardLimit = -GameConfig.WORLD.GROUND_LENGTH + 10;
+      if (this.player.position.z > forwardLimit) {
+        this.player.position.z -= movementSpeed * 1.2;
+        this.player.rotation.y = Math.PI;
+        isMoving = true;
+      }
+    }
+    
+    if ((this.keys['ArrowDown'] || this.keys['s'] || this.mobileControls.backward)) {
+      const backwardLimit = 5;
+      if (this.player.position.z < backwardLimit) {
+        this.player.position.z += movementSpeed * 1.2;
+        this.player.rotation.y = 0;
+        isMoving = true;
+      }
+    }
+    
     if (isMoving && !this.gameState.playerJumping && this.player.position.y <= GameConfig.PLAYER.START_Y + 0.1) {
       const bobHeight = Math.sin(performance.now() * 0.015) * 0.05;
       this.player.position.y = GameConfig.PLAYER.START_Y + bobHeight;
@@ -1185,7 +1222,7 @@ class CubeRunner {
                    this.player.position.y <= GameConfig.PLAYER.START_Y + 0.1 &&
                    timeSinceLastJump > GameConfig.PLAYER.JUMP_COOLDOWN;
     
-    if ((this.keys[' '] || this.keys['ArrowUp'] || this.keys['w'] || this.mobileControls.jump) && canJump) {
+    if ((this.keys[' '] || this.mobileControls.jump) && canJump) {
       this.jumpVelocity = GameConfig.PHYSICS.JUMP_FORCE;
       this.gameState.playerJumping = true;
       this.gameState.lastJumpTime = currentTime;
@@ -1232,14 +1269,12 @@ class CubeRunner {
   
   private updateObstacles(deltaTime: number): void {
     this.obstacles.forEach(obstacle => {
-      obstacle.mesh.position.z += this.gameState.speed * deltaTime;
       obstacle.update(deltaTime);
       
-      if (obstacle.mesh.position.z > 10) {
-        obstacle.mesh.position.z = -(Math.random() * GameConfig.OBSTACLES.ZONE_MAX + GameConfig.OBSTACLES.ZONE_MIN);
-        obstacle.mesh.position.x = Math.random() * 16 - 8;
-        obstacle.baseX = obstacle.mesh.position.x;
-        
+      const distanceToPlayer = obstacle.mesh.position.z - this.player.position.z;
+      
+      if (distanceToPlayer > 0 && !obstacle.passed && distanceToPlayer < 5) {
+        obstacle.passed = true;
         this.gameState.score += GameConfig.OBSTACLES.POINTS_PER_OBSTACLE;
         this.updateScore();
         
@@ -1361,6 +1396,7 @@ class CubeRunner {
     this.player.position.set(0, GameConfig.PLAYER.START_Y, 0);
     
     this.obstacles.forEach(obstacle => {
+      obstacle.passed = false;
       obstacle.mesh.position.z = -(Math.random() * GameConfig.OBSTACLES.ZONE_MAX + GameConfig.OBSTACLES.ZONE_MIN);
       obstacle.mesh.position.x = Math.random() * 16 - 8;
       obstacle.baseX = obstacle.mesh.position.x;
@@ -1369,7 +1405,9 @@ class CubeRunner {
     this.mobileControls = {
       left: false,
       right: false,
-      jump: false
+      jump: false,
+      forward: false,
+      backward: false
     };
     
     this.lastFrameTime = performance.now();
@@ -1391,10 +1429,24 @@ class CubeRunner {
     this.updateObstacles(deltaTime);
     this.updateParticles(deltaTime);
     this.updateClouds(deltaTime);
+    this.updateCamera();
     
     this.renderer.render(this.scene, this.camera);
     
     this.animationId = requestAnimationFrame(this.gameLoop.bind(this));
+  }
+  
+  private updateCamera(): void {
+    const cameraOffset = new THREE.Vector3(0, 5, 10);
+    this.camera.position.x = this.player.position.x + cameraOffset.x;
+    this.camera.position.z = this.player.position.z + cameraOffset.z;
+    
+    const lookAtPos = new THREE.Vector3(
+      this.player.position.x,
+      this.player.position.y + 2,
+      this.player.position.z - 10
+    );
+    this.camera.lookAt(lookAtPos);
   }
 }
 

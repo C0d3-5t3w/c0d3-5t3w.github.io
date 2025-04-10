@@ -15,7 +15,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
 <body>
     <div id="game-container">
         <div id="score">Score: <span id="score-value">0</span></div>
-        <div id="instructions">Press SPACE to jump, ← → to move</div>
+        <div id="instructions">Use ↑↓ to move forward/back, ←→ to move sideways, SPACE to jump</div>
         <div id="level-up-notification" class="hidden">Level Up! Speed Increased!</div>
         <div id="game-over" class="hidden">
             <h2 class="pride-font">Game Over!</h2>
@@ -23,9 +23,17 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
             <button id="restart-button">Play Again</button>
         </div>
         <div id="mobile-controls" class="hidden">
-            <button id="mobile-left" class="mobile-btn">←</button>
-            <button id="mobile-jump" class="mobile-btn">JUMP</button>
-            <button id="mobile-right" class="mobile-btn">→</button>
+            <div class="control-row">
+                <button id="mobile-forward" class="mobile-btn">↑</button>
+            </div>
+            <div class="control-row">
+                <button id="mobile-left" class="mobile-btn">←</button>
+                <button id="mobile-jump" class="mobile-btn">JUMP</button>
+                <button id="mobile-right" class="mobile-btn">→</button>
+            </div>
+            <div class="control-row">
+                <button id="mobile-backward" class="mobile-btn">↓</button>
+            </div>
         </div>
         <canvas id="game-canvas"></canvas>
     </div>
