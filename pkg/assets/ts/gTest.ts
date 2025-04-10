@@ -416,6 +416,7 @@ class CubeRunner {
       catGroup.add(createFurTuft(x, 1.1, z, 0.15 + Math.random() * 0.1));
     }
     
+    catGroup.rotation.y = Math.PI; 
     catGroup.position.y = GameConfig.PLAYER.START_Y - 0.4; 
     catGroup.position.z = GameConfig.PLAYER.START_Z;
     
@@ -615,19 +616,26 @@ class CubeRunner {
     const currentTime = performance.now();
     const timeSinceLastJump = currentTime - this.gameState.lastJumpTime;
     
+    this.player.rotation.y = Math.PI;
+    
+    let isMoving = false;
+    
     if ((this.keys['ArrowLeft'] || this.keys['a']) && 
         this.player.position.x > GameConfig.WORLD.BOUNDARY_LEFT) {
       this.player.position.x -= movementSpeed;
-      this.player.rotation.y = Math.PI / 8;
+      this.player.rotation.y = Math.PI + Math.PI / 8; 
+      isMoving = true;
     }
     if ((this.keys['ArrowRight'] || this.keys['d']) && 
         this.player.position.x < GameConfig.WORLD.BOUNDARY_RIGHT) {
       this.player.position.x += movementSpeed;
-      this.player.rotation.y = -Math.PI / 8; 
+      this.player.rotation.y = Math.PI - Math.PI / 8; 
+      isMoving = true;
     }
     
-    if (!this.keys['ArrowLeft'] && !this.keys['a'] && !this.keys['ArrowRight'] && !this.keys['d']) {
-      this.player.rotation.y = 0;
+    if (isMoving && !this.gameState.playerJumping && this.player.position.y <= GameConfig.PLAYER.START_Y + 0.1) {
+      const bobHeight = Math.sin(performance.now() * 0.015) * 0.05;
+      this.player.position.y = GameConfig.PLAYER.START_Y + bobHeight;
     }
     
     const canJump = !this.gameState.playerJumping && 
