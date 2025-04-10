@@ -45,6 +45,7 @@ declare namespace THREE {
     setScalar(scalar: number): this;
     equals(v: Vector3): boolean;
     lerp(v: Vector3, alpha: number): this;
+    normalize(): this;
   }
   
   class Euler {
@@ -221,16 +222,17 @@ namespace GameConfig {
   });
 
   export const WORLD = Object.freeze({
-    BOUNDARY_LEFT: -30,
-    BOUNDARY_RIGHT: 30,
-    GROUND_WIDTH: 100,
-    GROUND_LENGTH: 2000,
-    MOUNTAIN_COUNT: 30,
-    CLOUD_COUNT: 50,
-    FLOWER_COUNT: 500,
-    BUSH_COUNT: 100,
-    TREE_COUNT: 150,
-    ROCK_COUNT: 80
+    BOUNDARY_LEFT: -50,
+    BOUNDARY_RIGHT: 50,
+    GROUND_WIDTH: 150,
+    GROUND_LENGTH: 3000,
+    MOUNTAIN_COUNT: 40,
+    CLOUD_COUNT: 80,
+    FLOWER_COUNT: 800,
+    BUSH_COUNT: 150,
+    TREE_COUNT: 250,
+    ROCK_COUNT: 120,
+    BIRD_COUNT: 60
   });
 
   export const OBSTACLES = Object.freeze({
@@ -270,10 +272,21 @@ namespace GameConfig {
   });
 
   export const CAMERA = Object.freeze({
-    HEIGHT: 6,
-    DISTANCE: 12,
-    LOOK_AHEAD: 5,
-    SMOOTHING: 0.08
+    HEIGHT: 7,
+    DISTANCE: 14,
+    LOOK_AHEAD: 8,
+    SMOOTHING: 0.05,
+    ROTATION_SPEED: 0.1
+  });
+
+  export const BIRDS = Object.freeze({
+    MIN_HEIGHT: 8,
+    MAX_HEIGHT: 25,
+    MIN_SPEED: 0.05,
+    MAX_SPEED: 0.15,
+    WING_FLAP_SPEED: 0.2,
+    MAX_WING_ANGLE: Math.PI / 6,
+    COLORS: [0x3366ff, 0x22aa22, 0xaa2222, 0xddbb33, 0xb555ff]
   });
 }
 
@@ -323,12 +336,132 @@ class Obstacle {
         this.mesh.rotation.z = Math.sin(performance.now() * 0.001) * this.rotationSpeed;
         break;
       case ObstacleType.ROCK:
-        this.mesh.position.x += this.moveDirection * this.MOVEMENT_SPEED;
-        this.mesh.rotation.z += this.moveDirection * (this.MOVEMENT_SPEED / 2);
-        if (Math.abs(this.mesh.position.x - this.baseX) > 1) {
-          this.moveDirection *= -1;
-        }
+      case ObstacleType.ROCK_CLUSTER:
         break;
+    }
+  }
+}
+
+class Bird {
+  public group: THREE.Group;
+  private wingLeft: THREE.Mesh;
+  private wingRight: THREE.Mesh;
+  private speed: number;
+  private direction: THREE.Vector3;
+  private flapTime: number = 0;
+  private flapSpeed: number;
+  private rotationSpeed: number;
+
+  constructor() {
+    this.group = new THREE.Group();
+    this.speed = GameConfig.BIRDS.MIN_SPEED + 
+                Math.random() * (GameConfig.BIRDS.MAX_SPEED - GameConfig.BIRDS.MIN_SPEED);
+    
+    this.flapSpeed = GameConfig.BIRDS.WING_FLAP_SPEED * (0.8 + Math.random() * 0.4);
+    this.rotationSpeed = 0.01 + Math.random() * 0.02;
+
+    const angle = Math.random() * Math.PI * 2;
+    this.direction = new THREE.Vector3(
+      Math.cos(angle),
+      0,
+      Math.sin(angle)
+    ).normalize();
+
+    const birdColor = GameConfig.BIRDS.COLORS[
+      Math.floor(Math.random() * GameConfig.BIRDS.COLORS.length)
+    ];
+    
+    const bodyGeometry = new THREE.ConeGeometry(0.3, 1, 5);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+      color: birdColor,
+      roughness: 0.8
+    });
+    
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.rotation.x = Math.PI / 2;
+    body.castShadow = true;
+    this.group.add(body);
+    
+    const headGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+    const headMaterial = new THREE.MeshStandardMaterial({
+      color: birdColor,
+      roughness: 0.5
+    });
+    
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.z = 0.45;
+    head.position.y = 0.1;
+    head.castShadow = true;
+    this.group.add(head);
+    
+    const beakGeometry = new THREE.ConeGeometry(0.05, 0.2, 4);
+    const beakMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffcc00,
+      roughness: 0.5
+    });
+    
+    const beak = new THREE.Mesh(beakGeometry, beakMaterial);
+    beak.position.z = 0.65;
+    beak.position.y = 0.1;
+    beak.rotation.x = -Math.PI / 2;
+    this.group.add(beak);
+    
+    const wingGeometry = new THREE.PlaneGeometry(0.8, 0.5);
+    const wingMaterial = new THREE.MeshStandardMaterial({
+      color: birdColor,
+      roughness: 0.8,
+      side: THREE.DoubleSide
+    });
+    
+    this.wingLeft = new THREE.Mesh(wingGeometry, wingMaterial);
+    this.wingLeft.position.set(-0.4, 0.1, 0);
+    this.wingLeft.rotation.z = Math.PI / 6;
+    this.wingLeft.castShadow = true;
+    this.group.add(this.wingLeft);
+    
+    this.wingRight = new THREE.Mesh(wingGeometry, wingMaterial);
+    this.wingRight.position.set(0.4, 0.1, 0);
+    this.wingRight.rotation.z = -Math.PI / 6;
+    this.wingRight.castShadow = true;
+    this.group.add(this.wingRight);
+    
+    const height = GameConfig.BIRDS.MIN_HEIGHT + 
+                  Math.random() * (GameConfig.BIRDS.MAX_HEIGHT - GameConfig.BIRDS.MIN_HEIGHT);
+    
+    const worldSize = Math.max(GameConfig.WORLD.GROUND_WIDTH, GameConfig.WORLD.GROUND_LENGTH);
+    const randomX = (Math.random() * worldSize) - (worldSize / 2);
+    const randomZ = (Math.random() * -worldSize) + (worldSize / 10);
+    
+    this.group.position.set(randomX, height, randomZ);
+    this.group.rotation.y = Math.random() * Math.PI * 2;
+  }
+  
+  update(deltaTime: number): void {
+    this.flapTime += deltaTime * this.flapSpeed;
+    const wingAngle = Math.sin(this.flapTime) * GameConfig.BIRDS.MAX_WING_ANGLE;
+    
+    this.wingLeft.rotation.z = Math.PI / 6 + wingAngle;
+    this.wingRight.rotation.z = -Math.PI / 6 - wingAngle;
+    
+    this.group.position.x += this.direction.x * this.speed * deltaTime;
+    this.group.position.z += this.direction.z * this.speed * deltaTime;
+    
+    this.group.rotation.y += (Math.sin(this.flapTime * 0.5) * this.rotationSpeed) * deltaTime;
+    
+    const margin = 20;
+    const worldHalfWidth = GameConfig.WORLD.GROUND_WIDTH / 2 + margin;
+    const worldHalfLength = GameConfig.WORLD.GROUND_LENGTH / 2 + margin;
+    
+    if (this.group.position.x > worldHalfWidth) {
+      this.group.position.x = -worldHalfWidth;
+    } else if (this.group.position.x < -worldHalfWidth) {
+      this.group.position.x = worldHalfWidth;
+    }
+    
+    if (this.group.position.z > margin) {
+      this.group.position.z = -worldHalfLength;
+    } else if (this.group.position.z < -worldHalfLength) {
+      this.group.position.z = margin;
     }
   }
 }
@@ -345,6 +478,7 @@ class CubeRunner {
   private clouds: THREE.Object3D[] = [];
   private skybox!: THREE.Object3D;
   private particles: Particle[] = [];
+  private birds: Bird[] = [];
   
   private gameState: GameState = {
     score: 0,
@@ -376,6 +510,7 @@ class CubeRunner {
 
   private cameraTargetPosition = new THREE.Vector3();
   private cameraTargetLookAt = new THREE.Vector3();
+  private playerTargetRotation = Math.PI;
   
   constructor() {
     this.initGame();
@@ -394,6 +529,7 @@ class CubeRunner {
     this.createObstacles();
     this.setupMobileControls();
     this.initEnvironment();
+    this.initBirds();
     this.gameLoop(0);
   }
   
@@ -1193,29 +1329,30 @@ class CubeRunner {
     const currentTime = performance.now();
     const timeSinceLastJump = currentTime - this.gameState.lastJumpTime;
     
-    this.player.rotation.y = Math.PI;
-    
     let isMoving = false;
     
     if ((this.keys['ArrowLeft'] || this.keys['a'] || this.mobileControls.left) && 
         this.player.position.x > GameConfig.WORLD.BOUNDARY_LEFT) {
       this.player.position.x -= movementSpeed;
-      this.player.rotation.y = Math.PI + Math.PI / 8; 
+      this.playerTargetRotation = Math.PI + Math.PI / 4;
       isMoving = true;
-    }
-    
-    if ((this.keys['ArrowRight'] || this.keys['d'] || this.mobileControls.right) && 
+    } else if ((this.keys['ArrowRight'] || this.keys['d'] || this.mobileControls.right) && 
         this.player.position.x < GameConfig.WORLD.BOUNDARY_RIGHT) {
       this.player.position.x += movementSpeed;
-      this.player.rotation.y = Math.PI - Math.PI / 8; 
+      this.playerTargetRotation = Math.PI - Math.PI / 4;
       isMoving = true;
+    } else if ((this.keys['ArrowUp'] || this.keys['w'] || this.mobileControls.forward)) {
+      this.playerTargetRotation = Math.PI;
+    } else if ((this.keys['ArrowDown'] || this.keys['s'] || this.mobileControls.backward)) {
+      this.playerTargetRotation = 0;
     }
+    
+    this.player.rotation.y += (this.playerTargetRotation - this.player.rotation.y) * 0.1;
     
     if ((this.keys['ArrowUp'] || this.keys['w'] || this.mobileControls.forward)) {
       const forwardLimit = -GameConfig.WORLD.GROUND_LENGTH + 20;
       if (this.player.position.z > forwardLimit) {
         this.player.position.z -= movementSpeed * 1.2;
-        this.player.rotation.y = Math.PI;
         isMoving = true;
       }
     }
@@ -1224,7 +1361,6 @@ class CubeRunner {
       const backwardLimit = 5;
       if (this.player.position.z < backwardLimit) {
         this.player.position.z += movementSpeed * 1.2;
-        this.player.rotation.y = 0;
         isMoving = true;
       }
     }
@@ -1445,6 +1581,7 @@ class CubeRunner {
     this.updateObstacles(deltaTime);
     this.updateParticles(deltaTime);
     this.updateClouds(deltaTime);
+    this.updateBirds(deltaTime);
     this.updateCamera();
     
     this.renderer.render(this.scene, this.camera);
@@ -1453,16 +1590,24 @@ class CubeRunner {
   }
   
   private updateCamera(): void {
+    const angle = this.player.rotation.y;
+    
+    const offsetX = Math.sin(angle) * GameConfig.CAMERA.DISTANCE;
+    const offsetZ = Math.cos(angle) * GameConfig.CAMERA.DISTANCE;
+    
     const idealPosition = new THREE.Vector3(
-      this.player.position.x,
+      this.player.position.x + offsetX,
       this.player.position.y + GameConfig.CAMERA.HEIGHT,
-      this.player.position.z + GameConfig.CAMERA.DISTANCE
+      this.player.position.z + offsetZ
     );
     
+    const lookAheadX = Math.sin(angle) * -GameConfig.CAMERA.LOOK_AHEAD;
+    const lookAheadZ = Math.cos(angle) * -GameConfig.CAMERA.LOOK_AHEAD;
+    
     const idealLookAt = new THREE.Vector3(
-      this.player.position.x,
+      this.player.position.x + lookAheadX,
       this.player.position.y + 1,
-      this.player.position.z - GameConfig.CAMERA.LOOK_AHEAD
+      this.player.position.z + lookAheadZ
     );
     
     if (!this.cameraTargetPosition.equals(new THREE.Vector3(0, 0, 0))) {
@@ -1510,6 +1655,20 @@ class CubeRunner {
       rock.position.set(x, 0, z);
       this.scene.add(rock);
     }
+  }
+
+  private initBirds(): void {
+    for (let i = 0; i < GameConfig.WORLD.BIRD_COUNT; i++) {
+      const bird = new Bird();
+      this.birds.push(bird);
+      this.scene.add(bird.group);
+    }
+  }
+
+  private updateBirds(deltaTime: number): void {
+    this.birds.forEach(bird => {
+      bird.update(deltaTime);
+    });
   }
 }
 
