@@ -245,9 +245,9 @@ namespace GameConfig {
 
   export const VISUALS = Object.freeze({
     SKY_COLOR: 0x87CEEB,
-    GROUND_COLOR: 0x69aa5c,
-    PLAYER_COLOR: 0x999999,
-    TREE_TRUNK_COLOR: 0x8B4513,
+    GROUND_COLOR: 0x3A4C40,
+    PLAYER_COLOR: 0xA9A9A9,
+    TREE_TRUNK_COLOR: 0x654321,
     TREE_FOLIAGE_COLORS: [0x2e8b57, 0x3c9065, 0x228b22],
     ROCK_COLOR_BASE: 0xAAAAAA,
     MOUNTAIN_COLORS: [0x8eaabd, 0x6e8a9d, 0x5d798c],
@@ -258,7 +258,7 @@ namespace GameConfig {
 
   export const UI = Object.freeze({
     MESSAGE_DURATION: 2000, 
-    HIGH_SCORE_KEY: 'catRunnerHighScore',
+    HIGH_SCORE_KEY: 'HighScore',
     LEVEL_UP_DURATION: 2000
   });
 
