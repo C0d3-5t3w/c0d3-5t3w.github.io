@@ -173,13 +173,13 @@ class Obstacle {
 }
 
 class CubeRunner {
-  private scene: THREE.Scene;
-  private camera: THREE.PerspectiveCamera;
-  private renderer: THREE.WebGLRenderer;
+  private scene!: THREE.Scene;
+  private camera!: THREE.PerspectiveCamera;
+  private renderer!: THREE.WebGLRenderer;
   
-  private player: THREE.Mesh;
+  private player!: THREE.Mesh;
   private obstacles: Obstacle[] = [];
-  private ground: THREE.Mesh;
+  private ground!: THREE.Mesh;
   
   private gameState: GameState = {
     score: 0,
