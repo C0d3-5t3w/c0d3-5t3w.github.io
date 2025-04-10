@@ -43,6 +43,8 @@ declare namespace THREE {
     copy(v: Vector3): this;
     multiplyScalar(scalar: number): this;
     setScalar(scalar: number): this;
+    equals(v: Vector3): boolean;
+    lerp(v: Vector3, alpha: number): this;
   }
   
   class Euler {
@@ -219,14 +221,16 @@ namespace GameConfig {
   });
 
   export const WORLD = Object.freeze({
-    BOUNDARY_LEFT: -8,
-    BOUNDARY_RIGHT: 8,
-    GROUND_WIDTH: 20,
-    GROUND_LENGTH: 1000,
-    MOUNTAIN_COUNT: 15,
-    CLOUD_COUNT: 30,
-    FLOWER_COUNT: 200,
-    BUSH_COUNT: 40
+    BOUNDARY_LEFT: -30,
+    BOUNDARY_RIGHT: 30,
+    GROUND_WIDTH: 100,
+    GROUND_LENGTH: 2000,
+    MOUNTAIN_COUNT: 30,
+    CLOUD_COUNT: 50,
+    FLOWER_COUNT: 500,
+    BUSH_COUNT: 100,
+    TREE_COUNT: 150,
+    ROCK_COUNT: 80
   });
 
   export const OBSTACLES = Object.freeze({
@@ -263,6 +267,13 @@ namespace GameConfig {
     PARTICLE_SIZE: 0.1,
     PARTICLE_LIFETIME: 1000,
     PARTICLE_SPEED: 0.05
+  });
+
+  export const CAMERA = Object.freeze({
+    HEIGHT: 6,
+    DISTANCE: 12,
+    LOOK_AHEAD: 5,
+    SMOOTHING: 0.08
   });
 }
 
@@ -362,6 +373,9 @@ class CubeRunner {
     forward: false, 
     backward: false 
   };
+
+  private cameraTargetPosition = new THREE.Vector3();
+  private cameraTargetLookAt = new THREE.Vector3();
   
   constructor() {
     this.initGame();
@@ -379,6 +393,7 @@ class CubeRunner {
     this.initEventListeners();
     this.createObstacles();
     this.setupMobileControls();
+    this.initEnvironment();
     this.gameLoop(0);
   }
   
@@ -623,7 +638,7 @@ class CubeRunner {
     
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
-    this.ground.position.z = -500;
+    this.ground.position.z = -GameConfig.WORLD.GROUND_LENGTH / 2;
     this.ground.receiveShadow = true;
     
     this.scene.add(this.ground);
@@ -635,13 +650,13 @@ class CubeRunner {
   }
   
   private addGrassDetails(): void {
-    const GRASS_COUNT = 400;
+    const GRASS_COUNT = 2000;
     const GRASS_COLORS = [0x3e8948, 0x579b42, 0x69aa5c];
     const GRASS_Y_OFFSET = 0.01;
     
     for (let i = 0; i < GRASS_COUNT; i++) {
-      const x = Math.random() * 20 - 10;
-      const z = Math.random() * 200 - 200;
+      const x = Math.random() * GameConfig.WORLD.GROUND_WIDTH - (GameConfig.WORLD.GROUND_WIDTH / 2);
+      const z = Math.random() * GameConfig.WORLD.GROUND_LENGTH - GameConfig.WORLD.GROUND_LENGTH; 
       
       const grassPatchGeometry = new THREE.PlaneGeometry(0.8 + Math.random() * 1.2, 0.8 + Math.random() * 1.2);
       const grassPatchMaterial = new THREE.MeshStandardMaterial({ 
@@ -726,8 +741,8 @@ class CubeRunner {
       flowerHead.castShadow = true;
       flowerGroup.add(flowerHead);
       
-      const x = Math.random() * 18 - 9;
-      const z = Math.random() * 180 - 190;
+      const x = Math.random() * (GameConfig.WORLD.GROUND_WIDTH - 4) - ((GameConfig.WORLD.GROUND_WIDTH - 4) / 2);
+      const z = -Math.random() * (GameConfig.WORLD.GROUND_LENGTH - 10);
       flowerGroup.position.set(x, 0, z);
       
       this.ground.add(flowerGroup);
@@ -768,10 +783,11 @@ class CubeRunner {
         bushGroup.add(bushPart);
       }
       
+      const edgeOffset = GameConfig.WORLD.GROUND_WIDTH / 5;
       const x = Math.random() > 0.5 ? 
-        -8 - Math.random() * 3 : 
-        8 + Math.random() * 3;
-      const z = Math.random() * 180 - 190;
+        -GameConfig.WORLD.GROUND_WIDTH / 2 + Math.random() * edgeOffset : 
+        GameConfig.WORLD.GROUND_WIDTH / 2 - Math.random() * edgeOffset;
+      const z = -Math.random() * (GameConfig.WORLD.GROUND_LENGTH - 10);
       bushGroup.position.set(x, 0, z);
       
       this.ground.add(bushGroup);
@@ -1196,7 +1212,7 @@ class CubeRunner {
     }
     
     if ((this.keys['ArrowUp'] || this.keys['w'] || this.mobileControls.forward)) {
-      const forwardLimit = -GameConfig.WORLD.GROUND_LENGTH + 10;
+      const forwardLimit = -GameConfig.WORLD.GROUND_LENGTH + 20;
       if (this.player.position.z > forwardLimit) {
         this.player.position.z -= movementSpeed * 1.2;
         this.player.rotation.y = Math.PI;
@@ -1437,16 +1453,63 @@ class CubeRunner {
   }
   
   private updateCamera(): void {
-    const cameraOffset = new THREE.Vector3(0, 5, 10);
-    this.camera.position.x = this.player.position.x + cameraOffset.x;
-    this.camera.position.z = this.player.position.z + cameraOffset.z;
-    
-    const lookAtPos = new THREE.Vector3(
+    const idealPosition = new THREE.Vector3(
       this.player.position.x,
-      this.player.position.y + 2,
-      this.player.position.z - 10
+      this.player.position.y + GameConfig.CAMERA.HEIGHT,
+      this.player.position.z + GameConfig.CAMERA.DISTANCE
     );
-    this.camera.lookAt(lookAtPos);
+    
+    const idealLookAt = new THREE.Vector3(
+      this.player.position.x,
+      this.player.position.y + 1,
+      this.player.position.z - GameConfig.CAMERA.LOOK_AHEAD
+    );
+    
+    if (!this.cameraTargetPosition.equals(new THREE.Vector3(0, 0, 0))) {
+      this.cameraTargetPosition.lerp(idealPosition, GameConfig.CAMERA.SMOOTHING);
+      this.cameraTargetLookAt.lerp(idealLookAt, GameConfig.CAMERA.SMOOTHING);
+    } else {
+      this.cameraTargetPosition.copy(idealPosition);
+      this.cameraTargetLookAt.copy(idealLookAt);
+    }
+    
+    this.camera.position.copy(this.cameraTargetPosition);
+    this.camera.lookAt(this.cameraTargetLookAt);
+  }
+
+  private initEnvironment(): void {
+    this.addStandaloneTrees();
+    this.addStandaloneRocks();
+  }
+
+  private addStandaloneTrees(): void {
+    for (let i = 0; i < GameConfig.WORLD.TREE_COUNT; i++) {
+      const isLarge = Math.random() > 0.6;
+      const tree = this.createTree(isLarge);
+      
+      const x = Math.random() * (GameConfig.WORLD.GROUND_WIDTH - 10) - ((GameConfig.WORLD.GROUND_WIDTH - 10) / 2);
+      const z = -Math.random() * (GameConfig.WORLD.GROUND_LENGTH - 20);
+      
+      if (Math.abs(x) < 5) {
+        continue;
+      }
+      
+      tree.position.set(x, 0, z);
+      this.scene.add(tree);
+    }
+  }
+
+  private addStandaloneRocks(): void {
+    for (let i = 0; i < GameConfig.WORLD.ROCK_COUNT; i++) {
+      const isCluster = Math.random() > 0.7;
+      const rock = this.createRock(isCluster);
+      
+      const x = Math.random() * (GameConfig.WORLD.GROUND_WIDTH - 5) - ((GameConfig.WORLD.GROUND_WIDTH - 5) / 2);
+      const z = -Math.random() * (GameConfig.WORLD.GROUND_LENGTH - 10);
+      
+      rock.position.set(x, 0, z);
+      this.scene.add(rock);
+    }
   }
 }
 
