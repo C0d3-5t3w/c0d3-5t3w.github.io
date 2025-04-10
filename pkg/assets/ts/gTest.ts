@@ -1592,8 +1592,8 @@ class CubeRunner {
   private updateCamera(): void {
     const angle = this.player.rotation.y;
     
-    const offsetX = Math.sin(angle) * GameConfig.CAMERA.DISTANCE;
-    const offsetZ = Math.cos(angle) * GameConfig.CAMERA.DISTANCE;
+    const offsetX = Math.sin(angle) * -GameConfig.CAMERA.DISTANCE;
+    const offsetZ = Math.cos(angle) * -GameConfig.CAMERA.DISTANCE;
     
     const idealPosition = new THREE.Vector3(
       this.player.position.x + offsetX,
@@ -1601,8 +1601,8 @@ class CubeRunner {
       this.player.position.z + offsetZ
     );
     
-    const lookAheadX = Math.sin(angle) * -GameConfig.CAMERA.LOOK_AHEAD;
-    const lookAheadZ = Math.cos(angle) * -GameConfig.CAMERA.LOOK_AHEAD;
+    const lookAheadX = Math.sin(angle) * GameConfig.CAMERA.LOOK_AHEAD;
+    const lookAheadZ = Math.cos(angle) * GameConfig.CAMERA.LOOK_AHEAD;
     
     const idealLookAt = new THREE.Vector3(
       this.player.position.x + lookAheadX,
