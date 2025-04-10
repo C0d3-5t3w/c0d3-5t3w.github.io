@@ -57,6 +57,8 @@ declare namespace THREE {
     rotation: Euler;
     scale: Vector3;
     children: Object3D[];
+    castShadow: boolean;
+    receiveShadow: boolean;
     lookAt(vector: Vector3): void;
     lookAt(x: number, y: number, z: number): void;
     add(object: Object3D): this;
