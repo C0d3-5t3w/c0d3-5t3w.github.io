@@ -16,6 +16,7 @@ header("Expires: Sat, 26 Jul 1997 05:00:00 GMT");
     <div id="game-container">
         <div id="score">Score: <span id="score-value">0</span></div>
         <div id="instructions">Press SPACE to jump, ← → to move</div>
+        <div id="level-up-notification" class="hidden">Level Up! Speed Increased!</div>
         <div id="game-over" class="hidden">
             <h2 class="pride-font">Game Over!</h2>
             <p>Final Score: <span id="final-score">0</span></p>

@@ -2,6 +2,7 @@ declare namespace THREE {
   class Scene {
     background: Color;
     add(object: Object3D): this;
+    remove(object: Object3D): this;
   }
   
   class PerspectiveCamera extends Object3D {
@@ -16,11 +17,21 @@ declare namespace THREE {
     constructor(parameters?: { canvas?: HTMLCanvasElement; antialias?: boolean });
     setSize(width: number, height: number, updateStyle?: boolean): void;
     render(scene: Scene, camera: Camera): void;
+    setPixelRatio(ratio: number): void;
+    shadowMap: {
+      enabled: boolean;
+      type: number;
+    };
   }
   
   class Color {
     constructor(color: number | string);
-    constructor(r: number, g: number, b: number);  
+    constructor(r: number, g: number, b: number);
+    r: number;
+    g: number;
+    b: number;
+    set(color: string | number): this;
+    setRGB(r: number, g: number, b: number): this;
   }
   
   class Vector3 {
@@ -29,18 +40,23 @@ declare namespace THREE {
     y: number;
     z: number;
     set(x: number, y: number, z: number): this;
+    copy(v: Vector3): this;
+    multiplyScalar(scalar: number): this;
+    setScalar(scalar: number): this;
   }
   
   class Euler {
     x: number;
     y: number;
     z: number;
+    set(x: number, y: number, z: number): this;
   }
   
   class Object3D {
     position: Vector3;
     rotation: Euler;
-    scale: Vector3; 
+    scale: Vector3;
+    children: Object3D[];
     lookAt(vector: Vector3): void;
     lookAt(x: number, y: number, z: number): void;
     add(object: Object3D): this;
@@ -53,6 +69,9 @@ declare namespace THREE {
   class Mesh extends Object3D {
     constructor(geometry?: BufferGeometry, material?: Material | Material[]);
     geometry: BufferGeometry;
+    material: Material | Material[];
+    castShadow: boolean;
+    receiveShadow: boolean;
   }
   
   class Box3 {
@@ -66,6 +85,7 @@ declare namespace THREE {
     attributes: {
       position: BufferAttribute;
     };
+    clone(): BufferGeometry;
   }
   
   class BufferAttribute {
@@ -76,14 +96,48 @@ declare namespace THREE {
     setX(index: number, x: number): this;
     setY(index: number, y: number): this;
     setZ(index: number, z: number): this;
+    needsUpdate: boolean;
   }
   
   class Material {
     constructor();
+    side?: number;
+    transparent?: boolean;
+    opacity?: number;
   }
   
   class MeshStandardMaterial extends Material {
-    constructor(parameters?: { color?: number | string; roughness?: number });
+    constructor(parameters?: { 
+      color?: number | string | Color; 
+      roughness?: number;
+      metalness?: number;
+      flatShading?: boolean;
+      side?: number;
+      transparent?: boolean;
+      opacity?: number;
+    });
+    color: Color | number | string;
+  }
+  
+  class MeshBasicMaterial extends Material {
+    constructor(parameters?: { 
+      color?: number | string | Color; 
+      transparent?: boolean; 
+      opacity?: number;
+      side?: number;
+    });
+    color: Color | number | string;
+    opacity: number;
+  }
+  
+  class ShaderMaterial extends Material {
+    constructor(parameters?: { 
+      vertexShader: string;
+      fragmentShader: string;
+      uniforms?: any;
+      side?: number;
+    });
+    uniforms: any;
   }
   
   class BoxGeometry extends BufferGeometry {
@@ -100,6 +154,18 @@ declare namespace THREE {
   
   class DirectionalLight extends Light {
     constructor(color?: number | string, intensity?: number);
+    castShadow: boolean;
+    shadow: {
+      mapSize: { width: number; height: number };
+      camera: {
+        near: number;
+        far: number;
+        left: number;
+        right: number;
+        top: number;
+        bottom: number;
+      };
+    };
   }
   
   class Light extends Object3D {
@@ -127,6 +193,11 @@ declare namespace THREE {
   class ConeGeometry extends BufferGeometry {
     constructor(radius?: number, height?: number, radialSegments?: number);
   }
+  
+  // Constants
+  const BackSide: number;
+  const DoubleSide: number;
+  const PCFSoftShadowMap: number;
 }
 
 namespace GameConfig {
@@ -150,7 +221,11 @@ namespace GameConfig {
     BOUNDARY_LEFT: -8,
     BOUNDARY_RIGHT: 8,
     GROUND_WIDTH: 20,
-    GROUND_LENGTH: 1000
+    GROUND_LENGTH: 1000,
+    MOUNTAIN_COUNT: 15,
+    CLOUD_COUNT: 30,
+    FLOWER_COUNT: 200,
+    BUSH_COUNT: 40
   });
 
   export const OBSTACLES = Object.freeze({
@@ -165,16 +240,28 @@ namespace GameConfig {
 
   export const VISUALS = Object.freeze({
     SKY_COLOR: 0x87CEEB,
-    GROUND_COLOR: 0x4CAF50,
+    GROUND_COLOR: 0x69aa5c,
     PLAYER_COLOR: 0x999999,
     TREE_TRUNK_COLOR: 0x8B4513,
-    TREE_FOLIAGE_COLORS: [0x2e8b57, 0x228b22],
-    ROCK_COLOR_BASE: 0xAAAAAA
+    TREE_FOLIAGE_COLORS: [0x2e8b57, 0x3c9065, 0x228b22],
+    ROCK_COLOR_BASE: 0xAAAAAA,
+    MOUNTAIN_COLORS: [0x8eaabd, 0x6e8a9d, 0x5d798c],
+    CLOUD_COLOR: 0xffffff,
+    FLOWER_COLORS: [0xff5252, 0xff9800, 0xffeb3b, 0xffffff, 0xe040fb],
+    BUSH_COLOR: 0x2e7d32
   });
 
   export const UI = Object.freeze({
     MESSAGE_DURATION: 2000, 
-    HIGH_SCORE_KEY: 'catRunnerHighScore'
+    HIGH_SCORE_KEY: 'catRunnerHighScore',
+    LEVEL_UP_DURATION: 2000
+  });
+
+  export const FX = Object.freeze({
+    PARTICLE_COUNT: 20,
+    PARTICLE_SIZE: 0.1,
+    PARTICLE_LIFETIME: 1000,
+    PARTICLE_SPEED: 0.05
   });
 }
 
@@ -241,6 +328,10 @@ class CubeRunner {
   private player!: THREE.Mesh;
   private obstacles: Obstacle[] = [];
   private ground!: THREE.Mesh;
+  private mountains: THREE.Object3D[] = [];
+  private clouds: THREE.Object3D[] = [];
+  private skybox!: THREE.Object3D;
+  private particles: Particle[] = [];
   
   private gameState: GameState = {
     score: 0,
@@ -273,9 +364,12 @@ class CubeRunner {
   private initGame(): void {
     this.isTouchDevice = this.detectTouchDevice();
     this.initScene();
-    this.initPlayer();
+    this.initSkybox();
+    this.initMountains();
+    this.initClouds();
     this.initGround();
     this.initLights();
+    this.initPlayer();
     this.initEventListeners();
     this.createObstacles();
     this.setupMobileControls();
@@ -290,7 +384,48 @@ class CubeRunner {
   
   private initScene(): void {
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(GameConfig.VISUALS.SKY_COLOR);
+    
+    const topColor = new THREE.Color(0x0077ff);
+    const bottomColor = new THREE.Color(0xffffff);
+    
+    const vertexShader = `
+      varying vec3 vWorldPosition;
+      void main() {
+        vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+        vWorldPosition = worldPosition.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `;
+    
+    const fragmentShader = `
+      uniform vec3 topColor;
+      uniform vec3 bottomColor;
+      uniform float offset;
+      uniform float exponent;
+      varying vec3 vWorldPosition;
+      void main() {
+        float h = normalize(vWorldPosition + offset).y;
+        gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+      }
+    `;
+    
+    const uniforms = {
+      topColor: { value: topColor },
+      bottomColor: { value: bottomColor },
+      offset: { value: 400 },
+      exponent: { value: 0.6 }
+    };
+    
+    const skyGeo = new THREE.SphereGeometry(400, 32, 15);
+    const skyMat = new THREE.ShaderMaterial({
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+      uniforms: uniforms,
+      side: THREE.BackSide
+    });
+    
+    const sky = new THREE.Mesh(skyGeo, skyMat);
+    this.scene.add(sky);
     
     this.camera = new THREE.PerspectiveCamera(
       75, 
@@ -299,20 +434,170 @@ class CubeRunner {
       1000
     );
     this.camera.position.set(0, 5, 10);
-    this.camera.lookAt(0, 0, -10);
+    this.camera.lookAt(0, 2, -10);
     
     const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+  }
+  
+  private initSkybox(): void {
+    const sunGeometry = new THREE.SphereGeometry(30, 32, 32);
+    const sunMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffffcc,
+      transparent: true,
+      opacity: 0.8
+    });
+    const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+    sun.position.set(-100, 100, -200);
+    this.scene.add(sun);
+    
+    const sunGlowGeometry = new THREE.SphereGeometry(35, 32, 32);
+    const sunGlowMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffddaa, 
+      transparent: true, 
+      opacity: 0.4
+    });
+    const sunGlow = new THREE.Mesh(sunGlowGeometry, sunGlowMaterial);
+    sun.add(sunGlow);
+  }
+  
+  private initMountains(): void {
+    for (let i = 0; i < GameConfig.WORLD.MOUNTAIN_COUNT; i++) {
+      const mountainGroup = new THREE.Group();
+      
+      const peakCount = 3 + Math.floor(Math.random() * 4);
+      
+      for (let p = 0; p < peakCount; p++) {
+        const height = 15 + Math.random() * 35;
+        const radius = 8 + Math.random() * 12;
+        
+        const mountainGeometry = new THREE.ConeGeometry(radius, height, 8);
+        const mountainColor = GameConfig.VISUALS.MOUNTAIN_COLORS[
+          Math.floor(Math.random() * GameConfig.VISUALS.MOUNTAIN_COLORS.length)
+        ];
+        
+        const mountainMaterial = new THREE.MeshStandardMaterial({
+          color: mountainColor,
+          flatShading: true,
+          roughness: 0.9
+        });
+        
+        const mountain = new THREE.Mesh(mountainGeometry, mountainMaterial);
+        
+        const offsetX = (Math.random() - 0.5) * 15;
+        const offsetZ = (Math.random() - 0.5) * 15;
+        mountain.position.set(offsetX, height / 2, offsetZ);
+        
+        if (height > 30) {
+          const snowCapGeometry = new THREE.ConeGeometry(radius * 0.4, height * 0.15, 8);
+          const snowMaterial = new THREE.MeshStandardMaterial({
+            color: 0xffffff,
+            roughness: 0.5
+          });
+          const snowCap = new THREE.Mesh(snowCapGeometry, snowMaterial);
+          snowCap.position.y = height * 0.4;
+          mountain.add(snowCap);
+        }
+        
+        if (mountainGeometry.attributes.position) {
+          const positions = mountainGeometry.attributes.position;
+          for (let i = 0; i < positions.count; i++) {
+            const x = positions.getX(i);
+            const y = positions.getY(i);
+            const z = positions.getZ(i);
+            
+            if (y < height * 0.9 && y > 0) {
+              positions.setX(i, x + (Math.random() - 0.5) * 2);
+              positions.setZ(i, z + (Math.random() - 0.5) * 2);
+            }
+          }
+          positions.needsUpdate = true;
+        }
+        
+        mountainGroup.add(mountain);
+      }
+      
+      const angle = (i / GameConfig.WORLD.MOUNTAIN_COUNT) * Math.PI * 2;
+      const distance = 80 + Math.random() * 100;
+      mountainGroup.position.x = Math.cos(angle) * distance;
+      mountainGroup.position.z = Math.sin(angle) * distance - 100;
+      
+      this.mountains.push(mountainGroup);
+      this.scene.add(mountainGroup);
+    }
+  }
+  
+  private initClouds(): void {
+    for (let i = 0; i < GameConfig.WORLD.CLOUD_COUNT; i++) {
+      const cloudGroup = new THREE.Group();
+      
+      const puffCount = 3 + Math.floor(Math.random() * 5);
+      
+      for (let p = 0; p < puffCount; p++) {
+        const size = 1.5 + Math.random() * 3;
+        
+        const cloudPuffGeometry = new THREE.SphereGeometry(size, 8, 8);
+        const cloudMaterial = new THREE.MeshStandardMaterial({
+          color: GameConfig.VISUALS.CLOUD_COLOR,
+          roughness: 0.7,
+          metalness: 0,
+          transparent: true,
+          opacity: 0.9
+        });
+        
+        const cloudPuff = new THREE.Mesh(cloudPuffGeometry, cloudMaterial);
+        
+        const offsetX = (Math.random() - 0.5) * 5;
+        const offsetY = (Math.random() - 0.5) * 2;
+        const offsetZ = (Math.random() - 0.5) * 5;
+        cloudPuff.position.set(offsetX, offsetY, offsetZ);
+        
+        cloudGroup.add(cloudPuff);
+      }
+      
+      const angle = Math.random() * Math.PI * 2;
+      const distance = 30 + Math.random() * 70;
+      const height = 20 + Math.random() * 30;
+      
+      cloudGroup.position.x = Math.cos(angle) * distance;
+      cloudGroup.position.y = height;
+      cloudGroup.position.z = Math.sin(angle) * distance - 50;
+      
+      (cloudGroup as any).speed = 0.01 + Math.random() * 0.02;
+      
+      this.clouds.push(cloudGroup);
+      this.scene.add(cloudGroup);
+    }
   }
   
   private initLights(): void {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     this.scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(0, 10, 5);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+    directionalLight.position.set(-10, 30, 10);
+    directionalLight.castShadow = true;
+    
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    directionalLight.shadow.camera.near = 0.5;
+    directionalLight.shadow.camera.far = 500;
+    
+    const shadowSize = 30;
+    directionalLight.shadow.camera.left = -shadowSize;
+    directionalLight.shadow.camera.right = shadowSize;
+    directionalLight.shadow.camera.top = shadowSize;
+    directionalLight.shadow.camera.bottom = -shadowSize;
+    
     this.scene.add(directionalLight);
+    
+    const backLight = new THREE.DirectionalLight(0x4477ff, 0.4);
+    backLight.position.set(10, 10, -10);
+    this.scene.add(backLight);
   }
   
   private initGround(): void {
@@ -320,40 +605,196 @@ class CubeRunner {
       GameConfig.WORLD.GROUND_WIDTH, 
       GameConfig.WORLD.GROUND_LENGTH
     );
+    
     const groundMaterial = new THREE.MeshStandardMaterial({ 
       color: GameConfig.VISUALS.GROUND_COLOR,
       roughness: 0.8,
+      metalness: 0.1,
     });
     
     this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
     this.ground.rotation.x = -Math.PI / 2;
     this.ground.position.z = -500;
-    
-    this.addGrassDetails();
+    this.ground.receiveShadow = true;
     
     this.scene.add(this.ground);
+    
+    this.addGrassDetails();
+    this.addFlowers();
+    this.addBushes();
+    this.addPathDetails();
   }
   
   private addGrassDetails(): void {
-    const GRASS_COUNT = 200;
-    const GRASS_COLORS = [0x3e8948, 0x579b42];
+    const GRASS_COUNT = 400;
+    const GRASS_COLORS = [0x3e8948, 0x579b42, 0x69aa5c];
     const GRASS_Y_OFFSET = 0.01;
     
     for (let i = 0; i < GRASS_COUNT; i++) {
       const x = Math.random() * 20 - 10;
       const z = Math.random() * 200 - 200;
       
-      const grassPatchGeometry = new THREE.PlaneGeometry(1 + Math.random(), 1 + Math.random());
+      const grassPatchGeometry = new THREE.PlaneGeometry(0.8 + Math.random() * 1.2, 0.8 + Math.random() * 1.2);
       const grassPatchMaterial = new THREE.MeshStandardMaterial({ 
-        color: Math.random() > 0.5 ? GRASS_COLORS[0] : GRASS_COLORS[1],
-        roughness: 1
+        color: GRASS_COLORS[Math.floor(Math.random() * GRASS_COLORS.length)],
+        roughness: 1,
+        side: THREE.DoubleSide
       });
       
       const grassPatch = new THREE.Mesh(grassPatchGeometry, grassPatchMaterial);
       grassPatch.rotation.x = -Math.PI / 2;
       grassPatch.position.set(x, GRASS_Y_OFFSET, z);
       
+      if (Math.random() > 0.7) {
+        const crossGrass = new THREE.Mesh(grassPatchGeometry.clone(), grassPatchMaterial);
+        crossGrass.rotation.x = -Math.PI / 2;
+        crossGrass.rotation.z = Math.PI / 2;
+        crossGrass.position.copy(grassPatch.position);
+        this.ground.add(crossGrass);
+      }
+      
       this.ground.add(grassPatch);
+    }
+  }
+  
+  private addFlowers(): void {
+    for (let i = 0; i < GameConfig.WORLD.FLOWER_COUNT; i++) {
+      const flowerGroup = new THREE.Group();
+      
+      const stemGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8);
+      const stemMaterial = new THREE.MeshStandardMaterial({ 
+        color: 0x38761d,
+        roughness: 0.8
+      });
+      const stem = new THREE.Mesh(stemGeometry, stemMaterial);
+      stem.position.y = 0.15;
+      stem.castShadow = true;
+      flowerGroup.add(stem);
+      
+      const flowerColor = GameConfig.VISUALS.FLOWER_COLORS[
+        Math.floor(Math.random() * GameConfig.VISUALS.FLOWER_COLORS.length)
+      ];
+      
+      let flowerHead;
+      
+      if (Math.random() > 0.5) {
+        const petalCount = 5 + Math.floor(Math.random() * 6);
+        const flowerHeadGroup = new THREE.Group();
+        
+        for (let p = 0; p < petalCount; p++) {
+          const petalGeometry = new THREE.SphereGeometry(0.07, 8, 8);
+          const petalMaterial = new THREE.MeshStandardMaterial({
+            color: flowerColor,
+            roughness: 0.5
+          });
+          
+          const petal = new THREE.Mesh(petalGeometry, petalMaterial);
+          const angle = (p / petalCount) * Math.PI * 2;
+          petal.position.x = Math.cos(angle) * 0.1;
+          petal.position.z = Math.sin(angle) * 0.1;
+          flowerHeadGroup.add(petal);
+        }
+        
+        const centerGeometry = new THREE.SphereGeometry(0.05, 8, 8);
+        const centerMaterial = new THREE.MeshStandardMaterial({
+          color: 0xffff00,
+          roughness: 0.5
+        });
+        const center = new THREE.Mesh(centerGeometry, centerMaterial);
+        flowerHeadGroup.add(center);
+        
+        flowerHead = flowerHeadGroup;
+      } else {
+        const flowerHeadGeometry = new THREE.ConeGeometry(0.1, 0.1, 8);
+        const flowerHeadMaterial = new THREE.MeshStandardMaterial({
+          color: flowerColor,
+          roughness: 0.5
+        });
+        flowerHead = new THREE.Mesh(flowerHeadGeometry, flowerHeadMaterial);
+      }
+      
+      flowerHead.position.y = 0.3;
+      flowerHead.castShadow = true;
+      flowerGroup.add(flowerHead);
+      
+      const x = Math.random() * 18 - 9;
+      const z = Math.random() * 180 - 190;
+      flowerGroup.position.set(x, 0, z);
+      
+      this.ground.add(flowerGroup);
+    }
+  }
+  
+  private addBushes(): void {
+    for (let i = 0; i < GameConfig.WORLD.BUSH_COUNT; i++) {
+      const bushGroup = new THREE.Group();
+      
+      const clusterCount = 3 + Math.floor(Math.random() * 4);
+      const bushSize = 0.5 + Math.random() * 0.8;
+      
+      for (let c = 0; c < clusterCount; c++) {
+        const sphereSize = bushSize * (0.6 + Math.random() * 0.4);
+        const sphereGeometry = new THREE.SphereGeometry(sphereSize, 8, 8);
+        
+        const colorVariance = 0.1 * Math.random() - 0.05;
+        const colorHex = GameConfig.VISUALS.BUSH_COLOR;
+        const color = new THREE.Color(colorHex);
+        
+        color.r += colorVariance;
+        color.g += colorVariance;
+        color.b += colorVariance;
+        
+        const bushMaterial = new THREE.MeshStandardMaterial({
+          color: color,
+          roughness: 0.8
+        });
+        
+        const bushPart = new THREE.Mesh(sphereGeometry, bushMaterial);
+        
+        bushPart.position.x = (Math.random() - 0.5) * bushSize;
+        bushPart.position.y = sphereSize * 0.8;
+        bushPart.position.z = (Math.random() - 0.5) * bushSize;
+        
+        bushPart.castShadow = true;
+        bushGroup.add(bushPart);
+      }
+      
+      const x = Math.random() > 0.5 ? 
+        -8 - Math.random() * 3 : 
+        8 + Math.random() * 3;
+      const z = Math.random() * 180 - 190;
+      bushGroup.position.set(x, 0, z);
+      
+      this.ground.add(bushGroup);
+    }
+  }
+  
+  private addPathDetails(): void {
+    for (let i = 0; i < 100; i++) {
+      const rockSize = 0.1 + Math.random() * 0.2;
+      const rockGeometry = new THREE.SphereGeometry(rockSize, 6, 6);
+      const rockMaterial = new THREE.MeshStandardMaterial({
+        color: 0xaaaaaa,
+        roughness: 0.9
+      });
+      
+      const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+      
+      const side = Math.random() > 0.5 ? -1 : 1;
+      const edgePosition = side * (6 + Math.random() * 1.5);
+      const z = Math.random() * 180 - 190;
+      
+      rock.position.set(edgePosition, rockSize / 2, z);
+      rock.rotation.set(
+        Math.random() * Math.PI,
+        Math.random() * Math.PI,
+        Math.random() * Math.PI
+      );
+      
+      rock.castShadow = true;
+      rock.receiveShadow = true;
+      
+      this.ground.add(rock);
     }
   }
   
@@ -440,6 +881,16 @@ class CubeRunner {
     
     this.player = catGroup as unknown as THREE.Mesh;
     this.scene.add(catGroup);
+    
+    const castShadowOnMesh = (obj: THREE.Object3D) => {
+      if (obj instanceof THREE.Mesh) {
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+      obj.children.forEach(castShadowOnMesh);
+    };
+    
+    castShadowOnMesh(this.player);
   }
   
   private initEventListeners(): void {
@@ -657,6 +1108,49 @@ class CubeRunner {
     }
   }
   
+  private createParticles(position: THREE.Vector3, color: number, count: number): void {
+    for (let i = 0; i < count; i++) {
+      const particle = new Particle(position, color);
+      this.particles.push(particle);
+      this.scene.add(particle.mesh);
+    }
+  }
+  
+  private updateParticles(deltaTime: number): void {
+    this.particles = this.particles.filter(particle => {
+      const alive = particle.update(deltaTime);
+      if (!alive) {
+        this.scene.remove(particle.mesh);
+      }
+      return alive;
+    });
+  }
+  
+  private showLevelUpNotification(): void {
+    const notification = document.getElementById('level-up-notification');
+    if (notification) {
+      notification.classList.remove('hidden');
+      notification.classList.add('visible');
+      
+      setTimeout(() => {
+        notification.classList.remove('visible');
+        setTimeout(() => {
+          notification.classList.add('hidden');
+        }, 500);
+      }, GameConfig.UI.LEVEL_UP_DURATION);
+    }
+  }
+  
+  private updateClouds(deltaTime: number): void {
+    this.clouds.forEach(cloud => {
+      cloud.position.x += (cloud as any).speed * deltaTime;
+      
+      if (cloud.position.x > 100) {
+        cloud.position.x = -100;
+      }
+    });
+  }
+  
   private movePlayer(deltaTime: number): void {
     const movementSpeed = GameConfig.PLAYER.SPEED * deltaTime;
     const currentTime = performance.now();
@@ -706,6 +1200,32 @@ class CubeRunner {
         this.gameState.playerJumping = false;
       }
     }
+    
+    if (this.gameState.playerJumping && this.jumpVelocity > 0) {
+      if (Math.random() > 0.7) {
+        this.createParticles(
+          new THREE.Vector3(
+            this.player.position.x,
+            this.player.position.y - 0.5,
+            this.player.position.z
+          ),
+          0xeeeeee,
+          3
+        );
+      }
+    }
+    
+    if (this.player.position.y <= GameConfig.PLAYER.START_Y && this.jumpVelocity < -0.1) {
+      this.createParticles(
+        new THREE.Vector3(
+          this.player.position.x,
+          GameConfig.PLAYER.START_Y,
+          this.player.position.z
+        ),
+        0xcccccc,
+        10
+      );
+    }
   }
   
   private updateObstacles(deltaTime: number): void {
@@ -723,11 +1243,30 @@ class CubeRunner {
         
         if (this.gameState.score % GameConfig.OBSTACLES.SPEED_INCREASE_THRESHOLD === 0) {
           this.gameState.speed += GameConfig.OBSTACLES.SPEED_INCREMENT;
-          this.showMessage(`Speed increased! Current speed: ${this.gameState.speed.toFixed(2)}`);
+          this.showLevelUpNotification();
+          
+          this.createParticles(
+            new THREE.Vector3(
+              this.player.position.x,
+              this.player.position.y + 1,
+              this.player.position.z
+            ),
+            0xffdd00,
+            15
+          );
         }
       }
       
       if (this.checkCollision(this.player, obstacle.mesh)) {
+        this.createParticles(
+          new THREE.Vector3(
+            this.player.position.x,
+            this.player.position.y,
+            this.player.position.z
+          ),
+          0xff5252,
+          20
+        );
         this.endGame();
       }
     });
@@ -764,6 +1303,11 @@ class CubeRunner {
     const scoreElement = document.getElementById('score-value');
     if (scoreElement) {
       scoreElement.textContent = this.gameState.score.toString();
+      scoreElement.classList.add('score-updated');
+      
+      setTimeout(() => {
+        scoreElement.classList.remove('score-updated');
+      }, 600);
     }
   }
   
@@ -843,10 +1387,66 @@ class CubeRunner {
     
     this.movePlayer(deltaTime);
     this.updateObstacles(deltaTime);
+    this.updateParticles(deltaTime);
+    this.updateClouds(deltaTime);
     
     this.renderer.render(this.scene, this.camera);
     
     this.animationId = requestAnimationFrame(this.gameLoop.bind(this));
+  }
+}
+
+class Particle {
+  public mesh: THREE.Mesh;
+  private velocity: THREE.Vector3;
+  private lifetime: number;
+  private birthTime: number;
+  
+  constructor(position: THREE.Vector3, color: number) {
+    const size = GameConfig.FX.PARTICLE_SIZE * (0.5 + Math.random());
+    const geometry = new THREE.SphereGeometry(size, 4, 4);
+    const material = new THREE.MeshBasicMaterial({
+      color: color,
+      transparent: true,
+      opacity: 0.8
+    });
+    
+    this.mesh = new THREE.Mesh(geometry, material);
+    this.mesh.position.copy(position);
+    
+    const angle = Math.random() * Math.PI * 2;
+    const speed = GameConfig.FX.PARTICLE_SPEED * (0.5 + Math.random());
+    this.velocity = new THREE.Vector3(
+      Math.cos(angle) * speed,
+      0.5 + Math.random() * speed * 2,
+      Math.sin(angle) * speed
+    );
+    
+    this.lifetime = GameConfig.FX.PARTICLE_LIFETIME * (0.8 + Math.random() * 0.4);
+    this.birthTime = performance.now();
+  }
+  
+  public update(deltaTime: number): boolean {
+    const age = performance.now() - this.birthTime;
+    
+    if (age > this.lifetime) {
+      return false;
+    }
+    
+    this.mesh.position.x += this.velocity.x * deltaTime;
+    this.mesh.position.y += this.velocity.y * deltaTime;
+    this.mesh.position.z += this.velocity.z * deltaTime;
+    
+    this.velocity.y -= 0.01 * deltaTime;
+    this.velocity.multiplyScalar(0.98);
+    
+    const lifeRatio = 1 - (age / this.lifetime);
+    const material = this.mesh.material as THREE.MeshBasicMaterial;
+    material.opacity = lifeRatio * 0.8;
+    
+    this.mesh.scale.setScalar(lifeRatio);
+    
+    return true;
   }
 }
 
