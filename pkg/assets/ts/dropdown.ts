@@ -52,7 +52,7 @@ class SiteMapDropdown {
             // { text: '🐍 Znek', url: 'pkg/pages/znek.html' },
             // { text: '🫶🏼 Test', url: 'pkg/pages/test.html' },
             { text: '😻 Ziggy!', url: 'https://c0d3-5t3w.github.io/Ziggy/' },
-            { text: 'gTest', url: 'pkg/pages/ZigWalk.html' },
+            // { text: 'gTest', url: 'pkg/pages/ZigWalk.html' },
         ];
 
         links.forEach(link => {
