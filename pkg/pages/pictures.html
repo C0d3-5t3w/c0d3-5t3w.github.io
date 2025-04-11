@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/alt.css">
+    <link rel="stylesheet" href="../assets/css/fonts.css">
+    <title>My Pictures</title>
+</head>
+<body>
+    <div class="content page-content">
+        <h1 class="animated-heading pride-font">My Pictures</h1>
+        
+        <div class="gallery-container">
+            <div class="spotlight-container spotlight-effect">
+                <img src="../assets/images/p1.jpeg" alt="Patience!">
+                <div class="image-info">
+                    <div class="spotlight-title">✨ Spotlight Image ✨</div>
+                    <p>Patience being patient as usual.</p>
+                </div>
+            </div>
+            
+            <div class="masonry-gallery">
+                                        <div class="gallery-item spotlight-effect">
+                            <img src="../assets/images/z1.png" alt="Ziggy!">
+                            <div class="caption">Ziggy looking amazing as always.</div>
+                        </div>
+                                            <div class="gallery-item spotlight-effect">
+                            <img src="../assets/images/z3.jpg" alt="Ziggy!">
+                            <div class="caption">Ziggy in a relaxed mood.</div>
+                        </div>
+                                            <div class="gallery-item spotlight-effect">
+                            <img src="../assets/images/z2.png" alt="Ziggy!">
+                            <div class="caption">Another wonderful Ziggy moment.</div>
+                        </div>
+                                            <div class="gallery-item spotlight-effect">
+                            <img src="../assets/images/v1.jpg" alt="View!">
+                            <div class="caption">A beautiful scenic view.</div>
+                        </div>
+                                            <div class="gallery-item spotlight-effect">
+                            <img src="../assets/images/p2.jpeg" alt="Patience!">
+                            <div class="caption">Another adorable picture of Patience.</div>
+                        </div>
+                                            <div class="gallery-item spotlight-effect">
+                            <img src="../assets/images/l1.jpg" alt="Logo!">
+                            <div class="caption">The awesome logo.</div>
+                        </div>
+                                </div>
+        </div>
+        <script src="../assets/js/altdropdown.js"></script>
+    </div>
+    <script>
+        document.querySelectorAll('.gallery-item').forEach(container => {
+            container.addEventListener('click', () => {
+                container.classList.add('spin');
+                setTimeout(() => {
+                    container.classList.remove('spin');
+                }, 1000);
+            });
+        });
+    </script>
+    <script src="../assets/js/alt.js"></script>
+</body>
+</html>

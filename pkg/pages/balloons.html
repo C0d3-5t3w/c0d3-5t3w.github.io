@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/main.css">
+    <link rel="stylesheet" href="../assets/css/alt.css">
+    <link rel="stylesheet" href="../assets/css/fonts.css">
+    <title>Balloons</title>
+    <style>
+        .balloon {
+            position: absolute;
+            pointer-events: auto;
+            transition: transform 0.3s ease-out;
+            z-index: 10;
+            cursor: pointer;
+            box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2);
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+        }
+        
+        .balloon.grabbing {
+            cursor: grabbing;
+        }
+        
+        @keyframes wobble {
+            0% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(2deg); }
+            100% { transform: translateY(0) rotate(0deg); }
+        }
+        
+        .string {
+            position: absolute;
+            width: 1px;
+            background: rgba(255, 255, 255, 0.7);
+            transform-origin: top;
+            pointer-events: none;
+            z-index: 5;
+        }
+        
+        @keyframes pop {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+        
+        .popping {
+            animation: pop 0.3s forwards;
+            pointer-events: none;
+        }
+        
+        .confetti {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            pointer-events: none;
+            z-index: 15;
+        }
+        
+        .balloon-controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid var(--accent-teal);
+            border-radius: 8px;
+            padding: 15px;
+            z-index: 100;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            color: var(--primary-color);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            min-width: 250px;
+            max-width: 300px;
+            max-height: 80vh;
+            overflow-y: auto;
+            transform-origin: bottom left;
+            transform: scale(0.9);
+        }
+        
+        .balloon-controls.collapsed {
+            transform: translateY(calc(100% - 40px)) scale(0.9);
+        }
+        
+        .controls-toggle {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--primary-color);
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.2rem;
+            line-height: 1;
+        }
+        
+        .gravity-pointer {
+            position: fixed;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(3, 189, 171, 0.8) 0%, rgba(3, 189, 171, 0.2) 70%);
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 15px var(--accent-teal);
+            z-index: 99;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .gravity-pointer.active {
+            opacity: 1;
+        }
+        
+        .gravity-slider-container {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .gravity-active-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+            background-color: #555;
+            transition: background-color 0.3s ease;
+        }
+        
+        .gravity-active-indicator.active {
+            background-color: var(--accent-teal);
+            box-shadow: 0 0 5px var(--accent-teal);
+        }
+        
+        .balloon-controls h3 {
+            margin-top: 0;
+            color: var(--alt-accent);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            background-color: transparent;
+        }
+        
+        .control-item {
+            margin-bottom: 10px;
+        }
+        
+        .control-item label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        
+        .control-item input[type="range"] {
+            width: 100%;
+            background: #333;
+            height: 5px;
+            border-radius: 5px;
+            outline: none;
+        }
+        
+        .info-tip {
+            font-size: 0.8rem;
+            margin-top: 10px;
+            padding: 5px;
+            background: rgba(3, 189, 171, 0.2);
+            border-radius: 4px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="gravity-pointer" id="gravity-pointer"></div>
+    
+    <div class="balloon-controls collapsed" id="balloon-controls">
+        <button class="controls-toggle" id="controls-toggle">▼</button>
+        <h3 class="pride-font">Balloon Controls</h3>
+        <div class="control-item">
+            <label for="balloon-size">Size:</label>
+            <input type="range" id="balloon-size" min="20" max="100" value="50">
+        </div>
+        <div class="control-item">
+            <label for="balloon-speed">Float Speed:</label>
+            <input type="range" id="balloon-speed" min="1" max="10" value="5">
+        </div>
+        <div class="control-item">
+            <label for="balloon-wobble">Wobble Amount:</label>
+            <input type="range" id="balloon-wobble" min="1" max="10" value="5">
+        </div>
+        <div class="control-item">
+            <label for="string-length">String Length:</label>
+            <input type="range" id="string-length" min="50" max="200" value="100">
+        </div>
+        <button id="add-balloons" class="pulse-button">Add More Balloons</button>
+        
+        <div class="gravity-slider-container">
+            <div class="control-item">
+                <label for="gravity-strength">
+                    <span class="gravity-active-indicator" id="gravity-indicator"></span>
+                    Gravity Strength:
+                </label>
+                <input type="range" id="gravity-strength" min="0" max="10" value="0">
+            </div>
+        </div>
+        
+        <p class="info-tip">Tip: Double tap balloons on mobile to pop them!</p>
+    </div>
+    
+    <div id="balloon-stats" class="terminal-text" style="position: fixed; bottom: 10px; right: 10px; z-index: 100;">
+        Balloons: <span id="balloon-count">0</span>
+    </div>
+    
+    <div id="balloon-container">
+        <div class='balloon' 
+                data-size='38'
+                data-x='62'
+                data-y='90'
+                data-hue='18'
+                style='
+                width: 38px;
+                height: 45.6px;
+                left: 62%;
+                top: 90%;
+                transform: rotate(-7deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(18, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 62.19%;
+                top: 90.456%;
+                height: 100px;
+                transform: rotate(2deg);
+            '></div><div class='balloon' 
+                data-size='52'
+                data-x='100'
+                data-y='63'
+                data-hue='34'
+                style='
+                width: 52px;
+                height: 62.4px;
+                left: 100%;
+                top: 63%;
+                transform: rotate(-7deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(34, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 100.26%;
+                top: 63.624%;
+                height: 100px;
+                transform: rotate(5deg);
+            '></div><div class='balloon' 
+                data-size='63'
+                data-x='79'
+                data-y='100'
+                data-hue='316'
+                style='
+                width: 63px;
+                height: 75.6px;
+                left: 79%;
+                top: 100%;
+                transform: rotate(2deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(316, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 79.315%;
+                top: 100.756%;
+                height: 100px;
+                transform: rotate(5deg);
+            '></div><div class='balloon' 
+                data-size='69'
+                data-x='23'
+                data-y='13'
+                data-hue='147'
+                style='
+                width: 69px;
+                height: 82.8px;
+                left: 23%;
+                top: 13%;
+                transform: rotate(-9deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(147, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 23.345%;
+                top: 13.828%;
+                height: 100px;
+                transform: rotate(5deg);
+            '></div><div class='balloon' 
+                data-size='54'
+                data-x='57'
+                data-y='18'
+                data-hue='237'
+                style='
+                width: 54px;
+                height: 64.8px;
+                left: 57%;
+                top: 18%;
+                transform: rotate(0deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(237, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 57.27%;
+                top: 18.648%;
+                height: 100px;
+                transform: rotate(1deg);
+            '></div><div class='balloon' 
+                data-size='66'
+                data-x='16'
+                data-y='57'
+                data-hue='107'
+                style='
+                width: 66px;
+                height: 79.2px;
+                left: 16%;
+                top: 57%;
+                transform: rotate(-9deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(107, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 16.33%;
+                top: 57.792%;
+                height: 100px;
+                transform: rotate(3deg);
+            '></div><div class='balloon' 
+                data-size='66'
+                data-x='0'
+                data-y='80'
+                data-hue='29'
+                style='
+                width: 66px;
+                height: 79.2px;
+                left: 0%;
+                top: 80%;
+                transform: rotate(4deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(29, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 0.33%;
+                top: 80.792%;
+                height: 100px;
+                transform: rotate(4deg);
+            '></div><div class='balloon' 
+                data-size='63'
+                data-x='80'
+                data-y='51'
+                data-hue='70'
+                style='
+                width: 63px;
+                height: 75.6px;
+                left: 80%;
+                top: 51%;
+                transform: rotate(-4deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(70, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 80.315%;
+                top: 51.756%;
+                height: 100px;
+                transform: rotate(-1deg);
+            '></div><div class='balloon' 
+                data-size='33'
+                data-x='53'
+                data-y='75'
+                data-hue='260'
+                style='
+                width: 33px;
+                height: 39.6px;
+                left: 53%;
+                top: 75%;
+                transform: rotate(-8deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(260, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 53.165%;
+                top: 75.396%;
+                height: 100px;
+                transform: rotate(5deg);
+            '></div><div class='balloon' 
+                data-size='61'
+                data-x='87'
+                data-y='70'
+                data-hue='152'
+                style='
+                width: 61px;
+                height: 73.2px;
+                left: 87%;
+                top: 70%;
+                transform: rotate(-9deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(152, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 87.305%;
+                top: 70.732%;
+                height: 100px;
+                transform: rotate(-3deg);
+            '></div><div class='balloon' 
+                data-size='70'
+                data-x='85'
+                data-y='47'
+                data-hue='223'
+                style='
+                width: 70px;
+                height: 84px;
+                left: 85%;
+                top: 47%;
+                transform: rotate(-6deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(223, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 85.35%;
+                top: 47.84%;
+                height: 100px;
+                transform: rotate(-5deg);
+            '></div><div class='balloon' 
+                data-size='50'
+                data-x='25'
+                data-y='75'
+                data-hue='60'
+                style='
+                width: 50px;
+                height: 60px;
+                left: 25%;
+                top: 75%;
+                transform: rotate(-5deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(60, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 25.25%;
+                top: 75.6%;
+                height: 100px;
+                transform: rotate(-1deg);
+            '></div><div class='balloon' 
+                data-size='68'
+                data-x='54'
+                data-y='53'
+                data-hue='213'
+                style='
+                width: 68px;
+                height: 81.6px;
+                left: 54%;
+                top: 53%;
+                transform: rotate(8deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(213, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 54.34%;
+                top: 53.816%;
+                height: 100px;
+                transform: rotate(-2deg);
+            '></div><div class='balloon' 
+                data-size='57'
+                data-x='58'
+                data-y='72'
+                data-hue='109'
+                style='
+                width: 57px;
+                height: 68.4px;
+                left: 58%;
+                top: 72%;
+                transform: rotate(4deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(109, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 58.285%;
+                top: 72.684%;
+                height: 100px;
+                transform: rotate(-3deg);
+            '></div><div class='balloon' 
+                data-size='63'
+                data-x='90'
+                data-y='70'
+                data-hue='206'
+                style='
+                width: 63px;
+                height: 75.6px;
+                left: 90%;
+                top: 70%;
+                transform: rotate(5deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(206, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 90.315%;
+                top: 70.756%;
+                height: 100px;
+                transform: rotate(0deg);
+            '></div><div class='balloon' 
+                data-size='39'
+                data-x='4'
+                data-y='24'
+                data-hue='153'
+                style='
+                width: 39px;
+                height: 46.8px;
+                left: 4%;
+                top: 24%;
+                transform: rotate(-6deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(153, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 4.195%;
+                top: 24.468%;
+                height: 100px;
+                transform: rotate(1deg);
+            '></div><div class='balloon' 
+                data-size='60'
+                data-x='12'
+                data-y='68'
+                data-hue='55'
+                style='
+                width: 60px;
+                height: 72px;
+                left: 12%;
+                top: 68%;
+                transform: rotate(-8deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(55, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 12.3%;
+                top: 68.72%;
+                height: 100px;
+                transform: rotate(-4deg);
+            '></div><div class='balloon' 
+                data-size='55'
+                data-x='46'
+                data-y='57'
+                data-hue='338'
+                style='
+                width: 55px;
+                height: 66px;
+                left: 46%;
+                top: 57%;
+                transform: rotate(8deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(338, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 46.275%;
+                top: 57.66%;
+                height: 100px;
+                transform: rotate(-3deg);
+            '></div><div class='balloon' 
+                data-size='52'
+                data-x='30'
+                data-y='12'
+                data-hue='153'
+                style='
+                width: 52px;
+                height: 62.4px;
+                left: 30%;
+                top: 12%;
+                transform: rotate(-10deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(153, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 30.26%;
+                top: 12.624%;
+                height: 100px;
+                transform: rotate(-3deg);
+            '></div><div class='balloon' 
+                data-size='59'
+                data-x='54'
+                data-y='25'
+                data-hue='344'
+                style='
+                width: 59px;
+                height: 70.8px;
+                left: 54%;
+                top: 25%;
+                transform: rotate(3deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(344, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 54.295%;
+                top: 25.708%;
+                height: 100px;
+                transform: rotate(-2deg);
+            '></div><div class='balloon' 
+                data-size='67'
+                data-x='13'
+                data-y='96'
+                data-hue='99'
+                style='
+                width: 67px;
+                height: 80.4px;
+                left: 13%;
+                top: 96%;
+                transform: rotate(-5deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(99, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 13.335%;
+                top: 96.804%;
+                height: 100px;
+                transform: rotate(-4deg);
+            '></div><div class='balloon' 
+                data-size='50'
+                data-x='69'
+                data-y='29'
+                data-hue='349'
+                style='
+                width: 50px;
+                height: 60px;
+                left: 69%;
+                top: 29%;
+                transform: rotate(4deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(349, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 69.25%;
+                top: 29.6%;
+                height: 100px;
+                transform: rotate(-5deg);
+            '></div><div class='balloon' 
+                data-size='60'
+                data-x='81'
+                data-y='28'
+                data-hue='295'
+                style='
+                width: 60px;
+                height: 72px;
+                left: 81%;
+                top: 28%;
+                transform: rotate(-2deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(295, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 81.3%;
+                top: 28.72%;
+                height: 100px;
+                transform: rotate(4deg);
+            '></div><div class='balloon' 
+                data-size='41'
+                data-x='14'
+                data-y='20'
+                data-hue='332'
+                style='
+                width: 41px;
+                height: 49.2px;
+                left: 14%;
+                top: 20%;
+                transform: rotate(5deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(332, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 14.205%;
+                top: 20.492%;
+                height: 100px;
+                transform: rotate(-2deg);
+            '></div><div class='balloon' 
+                data-size='55'
+                data-x='71'
+                data-y='38'
+                data-hue='272'
+                style='
+                width: 55px;
+                height: 66px;
+                left: 71%;
+                top: 38%;
+                transform: rotate(10deg);
+                background: radial-gradient(circle at 70% 30%, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0) 50%), 
+                           hsla(272, 70%, 50%, 0.8);
+                box-shadow: inset -5px -5px 10px rgba(0, 0, 0, 0.2), 0 5px 15px rgba(0, 0, 0, 0.3);
+            '></div><div class='string'
+                style='
+                left: 71.275%;
+                top: 38.66%;
+                height: 100px;
+                transform: rotate(-5deg);
+            '></div>    </div>
+    
+    <div class="content page-content">
+        <h1 class="animated-heading pride-font">Balloon Room</h1>
+        <p>Click and drag to move the balloons. Double-click or right-click to pop them!</p>
+        <script src="../assets/js/altdropdown.js"></script>
+    </div>
+    
+    <script src="../assets/js/balloons.js"></script>
+    <script src="../assets/js/alt.js"></script>
+</body>
+</html>
