@@ -581,11 +581,11 @@ document.addEventListener("DOMContentLoaded", function() {
         
         handleMouseUp(e: MouseEvent): void {
             if (e.button === 0) {
-                this.isMouseDown = false;
-                this.isDragCreating = false;
+                this.isMouseDown === false;
+                this.isDragCreating === false;
             } else if (e.button === 2) {
-                this.mouseRightDown = false;
-                this.mouseMode = 'repel';
+                this.mouseRightDown === false;
+                this.mouseMode === 'repel';
             }
         }
         
