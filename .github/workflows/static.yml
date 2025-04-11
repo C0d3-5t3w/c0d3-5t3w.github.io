@@ -1,0 +1,134 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'
+          extensions: mbstring, xml, ctype, iconv, intl
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+      
+      - name: Install dependencies
+        run: npm install typescript sass
+      
+      - name: Create build directory
+        run: mkdir -p _site
+      
+      - name: Process PHP files
+        run: |
+          # Create a PHP script to handle includes properly
+          cat > process_php.php << 'EOL'
+          <?php
+          function process_php_files($dir) {
+              $files = glob($dir . '/*.php');
+              foreach ($files as $file) {
+                  $target = '_site/' . str_replace('.php', '.html', $file);
+                  // Ensure target directory exists
+                  if (!is_dir(dirname($target))) {
+                      mkdir(dirname($target), 0777, true);
+                  }
+                  // Process the PHP file through the interpreter
+                  ob_start();
+                  include $file;
+                  $content = ob_get_clean();
+                  file_put_contents($target, $content);
+                  echo "Processed: $file -> $target\n";
+              }
+              
+              // Process subdirectories
+              $subdirs = glob($dir . '/*', GLOB_ONLYDIR);
+              foreach ($subdirs as $subdir) {
+                  if ($subdir != '_site' && $subdir != 'node_modules' && $subdir != '.git') {
+                      process_php_files($subdir);
+                  }
+              }
+          }
+          
+          process_php_files('.');
+          EOL
+          
+          # Execute the PHP script
+          php process_php.php
+      
+      - name: Setup TypeScript configuration
+        run: |
+          echo '{
+            "compilerOptions": {
+              "target": "ES2015",
+              "module": "CommonJS",
+              "outDir": "_site",
+              "rootDir": ".",
+              "strict": false,
+              "esModuleInterop": true,
+              "skipLibCheck": true
+            },
+            "include": ["**/*.ts"],
+            "exclude": ["node_modules", "_site"]
+          }' > tsconfig.json
+      
+      - name: Compile TypeScript files
+        run: ./node_modules/.bin/tsc -p tsconfig.json
+      
+      - name: Compile SCSS files
+        run: |
+          find . -name "*.scss" -not -path "*/_site/*" -not -path "*/node_modules/*" -not -path "*/.git/*" | while read file; do
+            # Create target directory
+            mkdir -p _site/$(dirname "$file")
+            # Compile SCSS file to CSS
+            ./node_modules/.bin/sass "$file" "_site/${file%.scss}.css"
+          done
+      
+      - name: Copy static assets
+        run: |
+          # Copy all other static files
+          find . -type f -not -path "*/_site/*" -not -path "*/node_modules/*" -not -path "*/.git/*" \
+                 -not -name "*.php" -not -name "*.ts" -not -name "*.scss" \
+                 -not -name "package*.json" -not -name "tsconfig.json" -not -name "process_php.php" | while read file; do
+            # Create target directory
+            mkdir -p _site/$(dirname "$file")
+            # Copy the file
+            cp "$file" "_site/$file"
+          done
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v3
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: _site
+
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v2
