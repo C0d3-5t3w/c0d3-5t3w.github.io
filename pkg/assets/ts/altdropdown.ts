@@ -52,6 +52,7 @@ class PageSiteMapDropdown {
             // { text: '🐍 Znek', url: 'znek.html' },
             // { text: '🫶🏼 Test', url: 'test.html' },
             { text: '😻 Ziggy!', url: 'https://c0d3-5t3w.github.io/Ziggy/' },
+            { text: '💻 ZigWalk', url: 'https://c0d3-5t3w.github.io/forFun/' },
             // { text: 'ZigWalk', url: 'ZigWalk.html' },
         ];
 
