@@ -6,11 +6,14 @@ import (
 	"net/http"
 	"path/filepath"
 	"strings"
+
+	"github.com/C0d3-5t3w/myT00L5/fmtExt"
 )
 
 func main() {
 	fs := http.FileServer(http.Dir("."))
 	var Addr string
+	fmtExt.BoxPrint("Welcome!")
 	fmt.Println("Type an address to serve from (E.g. 127.0.0.1:8080):")
 	fmt.Scanln(&Addr)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
