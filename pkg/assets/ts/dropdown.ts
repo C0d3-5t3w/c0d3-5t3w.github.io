@@ -53,6 +53,7 @@ class SiteMapDropdown {
             // { text: '🫶🏼 Test', url: 'pkg/pages/test.html' },
             { text: '😻 Ziggy!', url: 'https://c0d3-5t3w.github.io/Ziggy/' },
             { text: '💻 forFun', url: 'https://c0d3-5t3w.github.io/forFun/' },
+            { text: '🎽 Tanks', url: 'https://c0d3-5t3w.github.io/tanks/' }, 
             // { text: 'gTest', url: 'pkg/pages/ZigWalk.html' },
         ];
 
